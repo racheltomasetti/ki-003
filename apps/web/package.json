@@ -1,0 +1,32 @@
+{
+  "name": "@ki/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ki/types": "workspace:*",
+    "@ki/services": "workspace:*",
+    "@ki/utils": "workspace:*",
+    "@supabase/supabase-js": "^2.101.1",
+    "@supabase/ssr": "^0.6.1",
+    "@tanstack/react-query": "^5.96.2",
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.2.2",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "postcss": "^8.5.3",
+    "typescript": "~5.9.2"
+  }
+}

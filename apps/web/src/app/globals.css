@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  /* Ki color palette */
+  --color-cream: #f6f1e6;
+  --color-ink: #100f0f;
+  --color-terra: #9e2a2b;
+  --color-ray: #efcb68;
+  --color-pacific: #58a4b0;
+  --color-sage: #67934d;
+
+  /* Typography — injected via next/font CSS variables */
+  --font-serif: var(--font-merriweather);
+  --font-sans: var(--font-poppins);
+}
+
+/* Base: cream background, ink text in light mode. Inverted in dark. */
+body {
+  background-color: theme(--color-cream);
+  color: theme(--color-ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: theme(--color-ink);
+    color: theme(--color-cream);
+  }
+}

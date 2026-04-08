@@ -1,0 +1,46 @@
+{
+  "name": "@ki/mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "dependencies": {
+    "@ki/types": "workspace:*",
+    "@ki/services": "workspace:*",
+    "@ki/utils": "workspace:*",
+    "@expo-google-fonts/merriweather": "^0.4.2",
+    "@expo-google-fonts/poppins": "^0.4.1",
+    "@react-native-google-signin/google-signin": "^16.1.2",
+    "@supabase/supabase-js": "^2.101.1",
+    "@tanstack/react-query": "^5.96.2",
+    "expo": "55",
+    "expo-apple-authentication": "~55.0.11",
+    "expo-audio": "~55.0.11",
+    "expo-constants": "~55.0.11",
+    "expo-file-system": "~55.0.14",
+    "expo-font": "~55.0.6",
+    "expo-image-picker": "~55.0.16",
+    "expo-linking": "~55.0.11",
+    "expo-router": "~55.0.10",
+    "expo-secure-store": "~55.0.11",
+    "expo-sqlite": "~55.0.13",
+    "expo-status-bar": "~55.0.5",
+    "nativewind": "^4.2.3",
+    "react": "19.2.0",
+    "react-native": "0.83.4",
+    "react-native-reanimated": "~3.17.1",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-screens": "~4.23.0",
+    "react-native-url-polyfill": "^3.0.0",
+    "tailwindcss": "^4.2.2",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.10",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}

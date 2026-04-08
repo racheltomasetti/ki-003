@@ -1,0 +1,288 @@
+# Ki — Claude Code Context
+
+## What We're Building
+
+Ki is a personal intelligence system — a living extension of your mind. Users feed it voice captures, text, and files. An AI pipeline enriches everything, embeds it, and makes it explorable. Over time, Ki surfaces the patterns, evolution, and shape of a mind.
+
+Full product context: `.claude/PRD.md`
+
+---
+
+## Architecture Overview
+
+Ki is a monorepo with two full-featured client surfaces sharing one Supabase backend. Both surfaces are complete and fully usable on their own — but they are designed as a system that works in tandem. Mobile is optimized for capture and immediacy. Web is optimized for exploration and depth. Each makes the other more powerful. Neither is a companion to the other — they are two expressions of the same system.
+
+```
+ki-003/
+├── apps/
+│   ├── mobile/     Expo SDK 55 — intimate, immediate, the intake valve
+│   └── web/        Next.js 14 App Router — expansive, intentional, the laboratory
+├── packages/
+│   ├── types/      Supabase-generated types + shared app types
+│   ├── services/   All Supabase service logic — client-injected
+│   └── utils/      Shared utilities
+├── supabase/
+│   ├── migrations/ All schema migrations
+│   └── functions/  Edge Functions
+└── package.json    pnpm workspace root
+```
+
+---
+
+## Tech Stack
+
+### Shared
+| Layer | Technology |
+|---|---|
+| Language | TypeScript throughout — no `any`, no shortcuts |
+| Monorepo | pnpm workspaces |
+| Backend | Supabase (Postgres, Auth, Storage, Edge Functions) |
+| State | Zustand |
+| Data fetching | TanStack Query |
+| Enrichment AI | Claude Haiku (via Supabase Edge Functions) |
+| Chat AI | Claude Sonnet (model switcher: Haiku \| Sonnet \| Opus) |
+| Vector search | pgvector via Supabase |
+
+### Mobile (`apps/mobile`)
+| Layer | Technology |
+|---|---|
+| Framework | Expo SDK 55, new architecture only (legacy arch dropped in SDK 55) |
+| Navigation | Expo Router (file-based) |
+| Styling | NativeWind (Tailwind for React Native) |
+| Offline buffer | Expo SQLite |
+| Supabase client | `@supabase/supabase-js` with AsyncStorage session |
+| Auth | Email/password + Sign in with Apple + Sign in with Google |
+| Voice recording | expo-audio (expo-av removed in SDK 55) |
+| Transcription | OpenAI Whisper API |
+
+### Web (`apps/web`)
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 App Router |
+| Styling | Tailwind CSS |
+| Supabase client | `@supabase/ssr` — `createBrowserClient` for client components, `createServerClient` for server components and route handlers |
+| Auth | Email/password + Sign in with Google (no Apple on web) |
+
+---
+
+## Design System
+
+### Colors
+
+```ts
+// Light mode
+background: '#f6f1e6'  // Cream
+foreground: '#100f0f'  // Ink
+
+// Dark mode
+background: '#100f0f'  // Ink
+foreground: '#f6f1e6'  // Cream
+
+// Accents (same in both modes)
+terra:   '#9e2a2b'  // Primary CTA, destructive
+ray:     '#efcb68'  // Highlights, streaks, warmth
+pacific: '#58a4b0'  // Secondary actions, links, calm states
+sage:    '#67934d'  // Positive states, growth indicators
+```
+
+### Typography
+
+```ts
+serif: 'Merriweather'   // Capture body text, editorial moments, display headings
+sans:  'Poppins'        // UI chrome — nav, labels, metadata, buttons
+```
+
+Serif = personal, written, permanent. Sans = UI scaffolding that recedes.
+
+### Dark / Light Mode
+
+Both modes supported from day one. Respect system preference by default, manual override in Profile settings. Mobile: NativeWind `dark:` variants throughout. Web: Tailwind `dark:` variants throughout. Never hardcode colors on either surface.
+
+---
+
+## Folder Structure
+
+### Mobile (`apps/mobile`)
+
+```
+app/
+├── (auth)/
+│   ├── sign-in.tsx
+│   ├── sign-up.tsx
+│   └── onboarding.tsx
+└── (tabs)/
+    ├── capture/
+    │   └── index.tsx           # dedicated capture screen
+    ├── home/
+    │   ├── index.tsx           # dashboard root
+    │   ├── library.tsx         # capture feed, search, filter by tag
+    │   └── captures/[id].tsx   # capture detail
+    └── profile/
+        ├── index.tsx
+        └── settings.tsx
+
+store/
+├── captureStore.ts   # Zustand — local state + offline queue
+└── authStore.ts      # Zustand — session, profile
+
+hooks/
+├── useCaptures.ts
+└── useEnrichments.ts
+```
+
+### Web (`apps/web`)
+
+```
+app/
+├── (auth)/
+│   ├── sign-in/
+│   └── sign-up/
+├── (app)/
+│   ├── library/       # corpus feed, search, filter by tag
+│   ├── capture/       # capture input (text, file — URL is Phase 2)
+│   └── chat/          # Chat with Ki — memory document + RAG interface
+└── layout.tsx
+
+components/
+hooks/
+```
+
+### Shared Packages
+
+```
+packages/types/
+├── src/
+│   ├── database.ts   # generated by Supabase CLI — never hand-edit
+│   └── app.ts        # shared UI-level types
+
+packages/services/
+├── src/
+│   ├── captures.ts   # all capture CRUD
+│   ├── enrichments.ts # read only — never write from app
+│   ├── storage.ts    # signed URLs, image upload
+│   └── index.ts
+
+packages/utils/
+├── src/
+│   └── index.ts
+```
+
+---
+
+## Architecture Rules
+
+**Service client injection.** `packages/services` functions accept a Supabase client as their first parameter. Each surface creates and manages its own client. Mobile uses `@supabase/supabase-js`. Web uses `@supabase/ssr` with appropriate client for the rendering context (browser vs server).
+
+```ts
+// packages/services/captures.ts
+export async function getCaptures(client: SupabaseClient, userId: string) { ... }
+
+// apps/mobile: passes its mobile client
+// apps/web: passes createBrowserClient() or createServerClient() as appropriate
+```
+
+**Captures are immutable after write.** The `body` field is never altered once saved. Enrichment lives in a separate `enrichments` table alongside the raw capture, never on top of it.
+
+**Enrichments are written by the pipeline only.** The app reads enrichments, never writes them. All writes to `enrichments` happen via the `enrich-capture` Edge Function triggered by Postgres webhook on `captures` INSERT.
+
+**`packages/services` is the only place Supabase logic lives.** No direct Supabase calls scattered across screens or components on either surface.
+
+**`packages/types/src/database.ts` is generated — never hand-edited.** Regenerate after every schema change.
+
+**RLS is always on.** Every table has row-level security. Users read and write only their own rows.
+
+**Audio is ephemeral.** Record → upload to temp path → transcribe → store transcript in `captures.body` → delete audio. Audio never persists in storage.
+
+**Offline-first on mobile.** Captures write to SQLite queue immediately. Sync to Supabase when connection is available. Users never lose a capture. Web does not require offline-first.
+
+**Tags are the only organization mechanism in Phase 1.** No collections UI. Collections revisited in Phase 2+ as knowledge graph clusters. Do not add collections UI.
+
+**Memory document is the first chat context layer.** `profiles.memory_document` is always included in every Chat with Ki interaction at ~800 tokens. Layer 2 is RAG: top 10 captures weighted by `is_starred` first, semantic similarity second, recency as tiebreaker. Total context budget ~3300 tokens. Never add a separate recency layer.
+
+**`is_starred` replaces `is_pinned`.** The field is `is_starred` throughout the schema and codebase. Starred captures float to the top of RAG retrieval — this is the quality signal, not rate limiting.
+
+---
+
+## Capture Lifecycle
+
+```
+active   → default state, visible in library feed
+archived → hidden from feed, preserved in data, filterable
+deleted  → permanent, cascades to enrichments
+```
+
+---
+
+## Enrichment Profile
+
+Every capture has an `enrichment_profile`:
+- `personal` — voice and text captures authored by the user. Haiku extracts: summary, themes, sentiment, mood_tags, energy_level, capture_intent, questions_raised, people_mentioned, key_quotes, entities.
+- `artifact` — file captures. Haiku extracts: summary, themes, key_quotes, entities, questions_raised, source_sentiment, user_context (processed significance note). Also auto-sets `captures.title` from first line of summary if title was left blank.
+
+`time_of_day_cat` is always derived from `captured_at` in the Edge Function — never from Claude.
+
+---
+
+## Phase 1 Search
+
+Library search uses Postgres full-text search with a GIN index on a generated `tsvector` column over `captures.body`. Fast, no external dependency, production-grade bridge to Phase 2 hybrid (BM25 + pgvector).
+
+---
+
+## Supabase Workflow
+
+```bash
+# Link to cloud project
+supabase login
+supabase link --project-ref <project-ref>
+
+# After schema changes — regenerate types
+supabase gen types typescript --linked > packages/types/src/database.ts
+
+# Push local migrations to cloud
+supabase db push
+
+# Deploy edge functions
+supabase functions deploy <function-name>
+```
+
+---
+
+## Key Commands
+
+```bash
+# Install all dependencies (from monorepo root)
+pnpm install
+
+# Start mobile dev server
+pnpm --filter mobile start
+# or: cd apps/mobile && npx expo start
+
+# Start web dev server
+pnpm --filter web dev
+# or: cd apps/web && pnpm dev
+
+# Type check all packages
+pnpm -r exec tsc --noEmit
+
+# Run on iOS simulator
+cd apps/mobile && npx expo run:ios
+```
+
+---
+
+## What Not To Do
+
+- Do not add `any` types — define proper types or use generated DB types
+- Do not write enrichments from the app — pipeline only
+- Do not alter `captures.body` after initial write
+- Do not scatter Supabase calls across screens — use `packages/services`
+- Do not hardcode colors — use NativeWind / Tailwind tokens with `dark:` variants
+- Do not hand-edit `packages/types/src/database.ts`
+- Do not add collections UI — tags are the Phase 1 organization mechanism
+- Do not create a Supabase client inline in a component — use the injected client pattern
+- Do not add Phase 2+ tables to migrations early — add them when those phases begin
+- Do not use Sign in with Apple on web — mobile only
+- Do not implement URL capture in Phase 1 — URL ingestion is Phase 2
+- Do not use `is_pinned` — the field is `is_starred` throughout the schema and codebase
+- Do not add a separate description field on captures — `user_context` is the description field, surface it in UI as "add context"
