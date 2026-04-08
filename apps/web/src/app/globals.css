@@ -3,7 +3,7 @@
 @theme {
   /* Ki color palette */
   --color-cream: #f6f1e6;
-  --color-ink: #100f0f;
+  --color-charcoal: #1a1a1a;
   --color-terra: #9e2a2b;
   --color-ray: #efcb68;
   --color-pacific: #58a4b0;
@@ -14,15 +14,15 @@
   --font-sans: var(--font-poppins);
 }
 
-/* Base: cream background, ink text in light mode. Inverted in dark. */
+/* Base: cream background, charcoal text in light mode. Inverted in dark. */
 body {
   background-color: theme(--color-cream);
-  color: theme(--color-ink);
+  color: theme(--color-charcoal);
 }
 
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: theme(--color-ink);
+    background-color: theme(--color-charcoal);
     color: theme(--color-cream);
   }
 }

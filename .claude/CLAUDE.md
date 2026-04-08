@@ -72,10 +72,10 @@ ki-003/
 ```ts
 // Light mode
 background: '#f6f1e6'  // Cream
-foreground: '#100f0f'  // Ink
+foreground: '#1a1a1a'  // Charcoal
 
 // Dark mode
-background: '#100f0f'  // Ink
+background: '#1a1a1a'  // Charcoal
 foreground: '#f6f1e6'  // Cream
 
 // Accents (same in both modes)
