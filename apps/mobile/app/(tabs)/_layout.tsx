@@ -1,15 +1,19 @@
 import { Tabs } from 'expo-router'
-import { useColorScheme } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { FontAwesome5, Ionicons } from '@expo/vector-icons'
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6'
+import { useAppTheme } from '@/hooks/useAppTheme'
+
+const TAB_ICON_SIZE = 24
+const CAPTURE_ICON_SIZE = 28
+const PROFILE_ICON_SIZE = 20
 
 export default function TabsLayout() {
-  const colorScheme = useColorScheme()
-  const isDark = colorScheme === 'dark'
+  const { colors } = useAppTheme()
 
-  const bg = isDark ? '#1a1a1a' : '#f6f1e6'
-  const border = isDark ? '#2a2a2a' : '#e8e3d8'
-  const active = '#9e2a2b'
-  const inactive = isDark ? 'rgba(246,241,230,0.35)' : 'rgba(26,26,26,0.35)'
+  const bg = colors.background
+  const border = colors.tabBarBorder
+  const active = colors.terra
+  const inactive = colors.tabInactive
 
   return (
     <Tabs
@@ -30,29 +34,32 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="home"
+        name="home/index"
         options={{
-          title: 'Library',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="library-outline" size={size} color={color} />
+          title: 'Explore',
+          tabBarLabel: 'Explore',
+          tabBarIcon: ({ color }) => (
+            <FontAwesome5 name="compass" solid size={TAB_ICON_SIZE} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="capture"
+        name="capture/index"
         options={{
           title: 'Capture',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="add-circle-outline" size={size + 4} color={color} />
+          tabBarLabel: 'Capture',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="add-circle-outline" size={CAPTURE_ICON_SIZE} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="profile/index"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color }) => (
+            <FontAwesome6 name="user" solid size={PROFILE_ICON_SIZE} color={color} />
           ),
         }}
       />

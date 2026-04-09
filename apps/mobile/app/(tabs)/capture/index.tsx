@@ -1,23 +1,13 @@
-import { View, Text } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { VoiceCapture } from '@/components/capture/VoiceCapture'
+import { useAppTheme } from '@/hooks/useAppTheme'
 
 export default function CaptureScreen() {
+  const { colors } = useAppTheme()
+
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-charcoal">
-      <View className="flex-1 items-center justify-center px-6">
-        <Text
-          style={{ fontFamily: 'Merriweather-Bold' }}
-          className="text-2xl text-charcoal dark:text-cream"
-        >
-          Capture
-        </Text>
-        <Text
-          style={{ fontFamily: 'Poppins-Regular' }}
-          className="text-charcoal/50 dark:text-cream/50 text-sm mt-2 text-center"
-        >
-          Voice, text, and file capture coming next.
-        </Text>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+      <VoiceCapture />
     </SafeAreaView>
   )
 }

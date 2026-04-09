@@ -1,6 +1,7 @@
 import '../global.css'
 import { useEffect } from 'react'
 import { useSegments, useRouter, SplashScreen, Stack } from 'expo-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useFonts } from 'expo-font'
 import {
   Merriweather_400Regular,
@@ -14,6 +15,10 @@ import {
 import { useAuthStore } from '@/store/authStore'
 
 SplashScreen.preventAutoHideAsync()
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 1000 * 60, retry: 2 } },
+})
 
 export default function RootLayout() {
   const { session, isLoading, initialize } = useAuthStore()
@@ -50,5 +55,9 @@ export default function RootLayout() {
     }
   }, [session, isLoading, fontsLoaded, segments])
 
-  return <Stack screenOptions={{ headerShown: false }} />
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </QueryClientProvider>
+  )
 }

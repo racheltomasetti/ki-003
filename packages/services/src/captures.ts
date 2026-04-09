@@ -8,7 +8,7 @@
 // SupabaseClient with SupabaseClient<Database> from @ki/types for full type inference.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { CaptureInsert, CaptureStatus } from '@ki/types'
+import type { Capture, CaptureInsert, CaptureStatus } from '@ki/types'
 
 export interface GetCapturesOptions {
   status?: CaptureStatus
@@ -69,8 +69,11 @@ export async function getCapture(client: SupabaseClient, id: string) {
     .single()
 }
 
-export async function createCapture(client: SupabaseClient, capture: CaptureInsert) {
-  return client
+export async function createCapture(
+  client: SupabaseClient,
+  capture: CaptureInsert & { user_id: string }
+): Promise<Capture> {
+  const { data, error } = await client
     .from('captures')
     .insert({
       ...capture,
@@ -78,6 +81,8 @@ export async function createCapture(client: SupabaseClient, capture: CaptureInse
     })
     .select()
     .single()
+  if (error) throw error
+  return data as Capture
 }
 
 // body is the one field that is never updated after write — enforced here
