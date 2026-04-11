@@ -26,6 +26,10 @@ const LOGO_SIZE = 200
 
 type CaptureState = 'idle' | 'recording' | 'processing' | 'review' | 'error'
 
+interface VoiceCaptureProps {
+  onComplete?: () => void
+}
+
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60).toString().padStart(2, '0')
   const s = Math.floor(seconds % 60).toString().padStart(2, '0')
@@ -58,7 +62,7 @@ async function transcribeAudio(uri: string): Promise<string> {
   return data.text as string
 }
 
-export function VoiceCapture() {
+export function VoiceCapture({ onComplete }: VoiceCaptureProps = {}) {
   const { isDark, colors } = useAppTheme()
   const router = useRouter()
   const { session } = useAuthStore()
@@ -225,7 +229,11 @@ export function VoiceCapture() {
     setCaptureState('idle')
     setTranscript('')
     setElapsed(0)
-    router.replace('/(tabs)/home')
+    if (onComplete) {
+      onComplete()
+    } else {
+      router.replace('/(tabs)/home')
+    }
   }
 
   const handleDiscard = async () => {
