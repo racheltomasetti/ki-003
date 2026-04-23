@@ -2,14 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { getCaptures, createCapture, addTagToCapture } from '@ki/services'
-import type { CaptureInsert } from '@ki/types'
+import type { CaptureInsert, CaptureStatus } from '@ki/types'
+import type { GetCapturesOptions } from '@ki/services'
 
-export function useCaptures() {
+export function useCaptures(options: Omit<GetCapturesOptions, 'status'> & { status?: CaptureStatus } = {}) {
   const { session } = useAuthStore()
+  const { status = 'active', ...rest } = options
 
   return useQuery({
-    queryKey: ['captures', session?.user.id],
-    queryFn: () => getCaptures(supabase, { status: 'active' }),
+    queryKey: ['captures', session?.user.id, status, rest],
+    queryFn: () => getCaptures(supabase, { status, ...rest }),
     enabled: !!session,
   })
 }

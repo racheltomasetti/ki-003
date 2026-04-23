@@ -16,8 +16,9 @@ import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { getTags, createTag } from '@ki/services'
-import type { Tag } from '@ki/types'
+import type { Tag, Project } from '@ki/types'
 import { useAppTheme } from '@/hooks/useAppTheme'
+import { useProjects } from '@/hooks/useProjects'
 
 const MAX_IMAGES = 4
 
@@ -25,7 +26,7 @@ interface ReviewCaptureProps {
   transcript: string
   capturedAt: Date
   onTranscriptChange: (text: string) => void
-  onSave: (mediaLocalUris: string[], tagIds: string[]) => Promise<void>
+  onSave: (mediaLocalUris: string[], tagIds: string[], projectIds: string[]) => Promise<void>
   onDiscard: () => void
   isSaving: boolean
 }
@@ -51,9 +52,12 @@ export function ReviewCapture({
 
   const [tags, setTags] = useState<Tag[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([])
   const [newTagName, setNewTagName] = useState('')
   const [showTagInput, setShowTagInput] = useState(false)
   const [mediaUris, setMediaUris] = useState<string[]>([])
+
+  const { data: projects } = useProjects()
 
   const fg = colors.foreground
   const fgMuted = colors.foregroundMuted
@@ -118,8 +122,14 @@ export function ReviewCapture({
     setMediaUris(prev => prev.filter(u => u !== uri))
   }
 
+  const toggleProject = (id: string) => {
+    setSelectedProjectIds(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    )
+  }
+
   const handleSave = async () => {
-    await onSave(mediaUris, selectedTagIds)
+    await onSave(mediaUris, selectedTagIds, selectedProjectIds)
   }
 
   const handleDiscard = () => {
@@ -175,6 +185,35 @@ export function ReviewCapture({
           scrollEnabled={false}
           textAlignVertical="top"
         />
+
+        {/* Projects */}
+        {projects && projects.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { fontFamily: 'Poppins-Medium', color: fgMuted }]}>
+              Projects
+            </Text>
+            <View style={styles.tagRow}>
+              {projects.map((project: Project) => {
+                const active = selectedProjectIds.includes(project.id)
+                return (
+                  <TouchableOpacity
+                    key={project.id}
+                    onPress={() => toggleProject(project.id)}
+                    style={[
+                      styles.tag,
+                      { backgroundColor: active ? (project.color ?? tagActiveBg) : tagBg },
+                    ]}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.tagText, { fontFamily: 'Poppins-Regular', color: active ? '#f6f1e6' : fg }]}>
+                      {project.name}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+        )}
 
         {/* Tags */}
         <View style={styles.section}>

@@ -111,11 +111,30 @@ export interface CaptureTag {
   tags?: Tag
 }
 
+export interface Project {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  color: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CaptureProject {
+  capture_id: string
+  project_id: string
+  user_id: string
+  created_at: string
+  projects?: Project
+}
+
 // ─── Derived / composed types used in the UI ─────────────────────────────────
 
 export interface CaptureWithEnrichment extends Capture {
   enrichments: Enrichment | null
   capture_tags: CaptureTag[]
+  capture_projects?: CaptureProject[]
 }
 
 // ─── Insert / update payloads ─────────────────────────────────────────────────

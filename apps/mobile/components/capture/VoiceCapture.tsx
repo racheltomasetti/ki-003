@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { uploadMedia } from '@ki/services'
 import { useCreateCapture, useAddTagToCapture } from '@/hooks/useCaptures'
+import { useAddCaptureToProject } from '@/hooks/useProjects'
 import { Waveform, BAR_COUNT, normalizeDb, simulatedAmplitude } from './Waveform'
 import { ReviewCapture } from './ReviewCapture'
 import { ThemedLogo } from './ThemedLogo'
@@ -68,6 +69,7 @@ export function VoiceCapture({ onComplete }: VoiceCaptureProps = {}) {
   const { session } = useAuthStore()
   const createCapture = useCreateCapture()
   const addTagToCapture = useAddTagToCapture()
+  const addCaptureToProject = useAddCaptureToProject()
 
   const [captureState, setCaptureState] = useState<CaptureState>('idle')
   const [elapsed, setElapsed] = useState(0)
@@ -192,7 +194,7 @@ export function VoiceCapture({ onComplete }: VoiceCaptureProps = {}) {
     else if (captureState === 'recording') handleStop()
   }
 
-  const handleSave = async (mediaLocalUris: string[], tagIds: string[]) => {
+  const handleSave = async (mediaLocalUris: string[], tagIds: string[], projectIds: string[]) => {
     const userId = session!.user.id
 
     const mediaPaths: string[] = []
@@ -221,6 +223,10 @@ export function VoiceCapture({ onComplete }: VoiceCaptureProps = {}) {
       await addTagToCapture.mutateAsync({ captureId: capture.id, tagId })
     }
 
+    for (const projectId of projectIds) {
+      await addCaptureToProject.mutateAsync({ captureId: capture.id, projectId })
+    }
+
     if (audioUriRef.current) {
       FileSystem.deleteAsync(audioUriRef.current, { idempotent: true }).catch(() => {})
       audioUriRef.current = null
@@ -232,7 +238,7 @@ export function VoiceCapture({ onComplete }: VoiceCaptureProps = {}) {
     if (onComplete) {
       onComplete()
     } else {
-      router.replace('/(tabs)/home')
+      router.replace('/(tabs)/library')
     }
   }
 
