@@ -5,6 +5,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import { useAppTheme } from '@/hooks/useAppTheme'
 import { useProjects, useCreateProject } from '@/hooks/useProjects'
 
@@ -17,16 +18,19 @@ export default function HomeScreen() {
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
+  const [newGoal, setNewGoal] = useState('')
   const [pickedColor, setPickedColor] = useState(PROJECT_COLORS[0])
 
+  const router = useRouter()
   const borderColor = colors.cardBorder
 
   const handleCreate = async () => {
     const name = newName.trim()
     if (!name) return
     try {
-      await createProject.mutateAsync({ name, color: pickedColor })
+      await createProject.mutateAsync({ name, color: pickedColor, description: newGoal.trim() || undefined })
       setNewName('')
+      setNewGoal('')
       setPickedColor(PROJECT_COLORS[0])
       setShowCreate(false)
     } catch {
@@ -56,8 +60,18 @@ export default function HomeScreen() {
             value={newName}
             onChangeText={setNewName}
             autoFocus
+            returnKeyType="next"
+          />
+          <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
+          <TextInput
+            style={[styles.goalInput, { fontFamily: 'Poppins-Regular', color: colors.foreground }]}
+            placeholder="What are you trying to build or figure out? (optional)"
+            placeholderTextColor={colors.foregroundSubtle}
+            value={newGoal}
+            onChangeText={setNewGoal}
             returnKeyType="done"
             onSubmitEditing={handleCreate}
+            multiline
           />
           <View style={styles.colorRow}>
             {PROJECT_COLORS.map(c => (
@@ -107,7 +121,11 @@ export default function HomeScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <View style={[styles.projectCard, { backgroundColor: colors.cardBg, borderColor }]}>
+            <TouchableOpacity
+              onPress={() => router.push(`/home/projects/${item.id}`)}
+              activeOpacity={0.7}
+              style={[styles.projectCard, { backgroundColor: colors.cardBg, borderColor }]}
+            >
               <View style={[styles.colorBar, { backgroundColor: item.color ?? colors.terra }]} />
               <View style={styles.projectInfo}>
                 <Text style={[styles.projectName, { fontFamily: 'Poppins-Medium', color: colors.foreground }]}>
@@ -120,7 +138,7 @@ export default function HomeScreen() {
                 ) : null}
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.foregroundSubtle} />
-            </View>
+            </TouchableOpacity>
           )}
         />
       )}
@@ -148,6 +166,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   nameInput: { fontSize: 15, padding: 0 },
+  divider: { height: 1 },
+  goalInput: { fontSize: 13, padding: 0, minHeight: 40 },
   colorRow: { flexDirection: 'row', gap: 10 },
   colorDot: {
     width: 24,

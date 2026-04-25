@@ -117,6 +117,8 @@ export interface Project {
   name: string
   description: string | null
   color: string | null
+  brief: string | null
+  brief_generated_at: string | null
   created_at: string
   updated_at: string
 }

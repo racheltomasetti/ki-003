@@ -15,7 +15,7 @@ Full product context: `.claude/PRD.md`
 ## The Two Surfaces
 
 Ki uses mobile and web for what each is genuinely best at. They are not the same app on two screens — they are two different relationships with your thinking.
-
+ok
 **Mobile — the intake valve.**
 Voice-first. Always with you. One tap, speak, done. The goal is zero friction between a thought and the corpus. V1 is voice-only on mobile. Text and file capture come later, on mobile and web.
 
