@@ -1,3 +1,4 @@
+export * from './canvas'
 export * from './captures'
 export * from './enrichments'
 export * from './profiles'

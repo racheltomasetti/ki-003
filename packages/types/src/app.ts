@@ -164,6 +164,99 @@ export type CaptureInsert = Pick<
 
 export type CaptureStatusUpdate = Pick<Capture, 'status'>
 
+// ─── Canvas ───────────────────────────────────────────────────────────────────
+
+export type CanvasNodeType = 'box' | 'circle' | 'diamond' | 'text' | 'sticky'
+
+export type CanvasCreatedBy = 'user' | 'agent'
+
+export type CanvasStatus = 'pending' | 'accepted' | 'rejected'
+
+export interface CanvasNode {
+  id: string
+  project_id: string
+  user_id: string
+  node_id: string
+  type: CanvasNodeType | string   // string fallback for future types added without migration
+  // Content — all optional, any combination valid
+  title: string | null
+  body: string | null
+  url: string | null
+  url_title: string | null
+  media_paths: string[] | null
+  // Layout
+  position_x: number
+  position_y: number
+  width: number | null
+  height: number | null
+  // Meta
+  style: Record<string, unknown> | null
+  created_by: CanvasCreatedBy
+  status: CanvasStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface CanvasEdge {
+  id: string
+  project_id: string
+  user_id: string
+  edge_id: string
+  source_id: string
+  target_id: string
+  label: string | null
+  style: Record<string, unknown> | null
+  created_by: CanvasCreatedBy
+  status: CanvasStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface CanvasConversation {
+  id: string
+  project_id: string
+  user_id: string
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
+
+// Insert payloads — omit server-generated fields
+
+export type CanvasNodeInsert = Omit<CanvasNode, 'id' | 'created_at' | 'updated_at'>
+
+export type CanvasEdgeInsert = Omit<CanvasEdge, 'id' | 'created_at' | 'updated_at'>
+
+// Agent response schema — returned by the canvas-agent Edge Function
+
+export type CanvasOperation =
+  | {
+      type: 'create_shape'
+      node_id: string
+      shape_type: CanvasNodeType
+      title?: string
+      body?: string
+      url?: string
+      url_title?: string
+      position: { x: number; y: number }
+      size: { width: number; height: number }
+      style?: Record<string, string>
+    }
+  | {
+      type: 'create_connection'
+      edge_id: string
+      source_node_id: string
+      target_node_id: string
+      label?: string
+    }
+
+export interface CanvasAgentResponse {
+  operations: CanvasOperation[]
+  clear_pending: boolean
+  summary: string
+  suggested_next?: string
+}
+
 export type ProfileUpdate = Partial<
   Pick<Profile, 'display_name' | 'avatar_url' | 'bio' | 'memory_document' | 'memory_updated_at'>
 >

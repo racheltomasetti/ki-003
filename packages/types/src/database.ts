@@ -39,6 +39,232 @@ export type Database = {
   }
   public: {
     Tables: {
+      canvas_conversations: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canvas_edges: {
+        Row: {
+          created_at: string
+          created_by: string
+          edge_id: string
+          id: string
+          label: string | null
+          project_id: string
+          source_id: string
+          status: string
+          style: Json | null
+          target_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          edge_id: string
+          id?: string
+          label?: string | null
+          project_id: string
+          source_id: string
+          status?: string
+          style?: Json | null
+          target_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          edge_id?: string
+          id?: string
+          label?: string | null
+          project_id?: string
+          source_id?: string
+          status?: string
+          style?: Json | null
+          target_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_edges_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_edges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canvas_nodes: {
+        Row: {
+          body: string | null
+          created_at: string
+          created_by: string
+          height: number | null
+          id: string
+          media_paths: string[] | null
+          node_id: string
+          position_x: number
+          position_y: number
+          project_id: string
+          status: string
+          style: Json | null
+          title: string | null
+          type: string
+          updated_at: string
+          url: string | null
+          url_title: string | null
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          created_by?: string
+          height?: number | null
+          id?: string
+          media_paths?: string[] | null
+          node_id: string
+          position_x: number
+          position_y: number
+          project_id: string
+          status?: string
+          style?: Json | null
+          title?: string | null
+          type: string
+          updated_at?: string
+          url?: string | null
+          url_title?: string | null
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          created_by?: string
+          height?: number | null
+          id?: string
+          media_paths?: string[] | null
+          node_id?: string
+          position_x?: number
+          position_y?: number
+          project_id?: string
+          status?: string
+          style?: Json | null
+          title?: string | null
+          type?: string
+          updated_at?: string
+          url?: string | null
+          url_title?: string | null
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_nodes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_nodes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capture_projects: {
+        Row: {
+          capture_id: string
+          created_at: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          capture_id: string
+          created_at?: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          capture_id?: string
+          created_at?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capture_projects_capture_id_fkey"
+            columns: ["capture_id"]
+            isOneToOne: false
+            referencedRelation: "captures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_projects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_projects_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       capture_tags: {
         Row: {
           capture_id: string
@@ -282,6 +508,50 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          brief: string | null
+          brief_generated_at: string | null
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brief?: string | null
+          brief_generated_at?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brief?: string | null
+          brief_generated_at?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           id: string
@@ -313,7 +583,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_captures: {
+        Args: {
+          match_count?: number
+          match_user_id: string
+          query_embedding: string
+        }
+        Returns: {
+          body: string
+          captured_at: string
+          id: string
+          is_starred: boolean
+          similarity: number
+          title: string
+          type: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
