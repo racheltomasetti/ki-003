@@ -6,6 +6,27 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Project } from '@ki/types'
 
+export async function updateProject(
+  client: SupabaseClient,
+  projectId: string,
+  data: Partial<{ name: string; description: string | null; brief: string | null }>
+) {
+  return client
+    .from('projects')
+    .update(data)
+    .eq('id', projectId)
+    .select()
+    .single()
+}
+
+export async function getProject(client: SupabaseClient, projectId: string) {
+  return client
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single()
+}
+
 export async function getProjects(client: SupabaseClient, userId: string) {
   return client
     .from('projects')

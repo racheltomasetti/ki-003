@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Merriweather, Poppins } from 'next/font/google'
 import './globals.css'
+import { Providers } from '@/components/Providers'
 
 const merriweather = Merriweather({
   subsets: ['latin'],
@@ -28,7 +29,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${merriweather.variable} ${poppins.variable}`}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 }

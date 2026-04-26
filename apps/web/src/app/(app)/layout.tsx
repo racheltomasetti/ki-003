@@ -1,9 +1,16 @@
-// Protected layout — middleware handles the redirect if no session.
-// Nav shell goes here in Checkpoint D when library is built.
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+import { createClient } from '@/lib/supabase/server'
+import { Sidebar } from '@/components/Sidebar'
+
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   return (
-    <div className="min-h-screen bg-cream dark:bg-charcoal">
-      {children}
+    <div className="flex h-screen overflow-hidden bg-cream dark:bg-charcoal">
+      <Sidebar userEmail={user?.email ?? null} />
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
     </div>
   )
 }
