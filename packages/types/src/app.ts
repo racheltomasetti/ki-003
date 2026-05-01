@@ -14,12 +14,13 @@ export type SourceType =
   | 'oura'
   | 'apple_health'
   | 'manual'
+  | 'distilled'
 
 export type CaptureStatus = 'active' | 'archived' | 'deleted'
 
 export type Visibility = 'private' | 'friends' | 'public'
 
-export type EnrichmentProfile = 'personal' | 'artifact'
+export type EnrichmentProfile = 'personal' | 'artifact' | 'distilled'
 
 export type EnrichmentStatus = 'pending' | 'complete' | 'failed'
 
@@ -111,14 +112,49 @@ export interface CaptureTag {
   tags?: Tag
 }
 
+export type ProjectMode = 'building' | 'researching' | 'figuring_out' | 'creating'
+
+export type ProjectConversationRole = 'user' | 'assistant'
+
+// source_metadata shape for distilled captures (source_type === 'distilled').
+// Written at save time by the thought distiller — never by the enrichment pipeline.
+export interface DistilledCaptureMetadata {
+  referenced_capture_ids: string[]   // UUIDs of the captures Ki drew from during distillation
+  distilled_at: string               // ISO timestamp of when the user saved this distilled thought
+  project_id: string                 // the project workspace where this was distilled
+}
+
 export interface Project {
   id: string
   user_id: string
   name: string
   description: string | null
   color: string | null
-  brief: string | null
-  brief_generated_at: string | null
+  what: string | null
+  why: string | null
+  success_looks_like: string | null
+  open_question: string | null
+  project_mode: ProjectMode | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectConversation {
+  id: string
+  project_id: string
+  user_id: string
+  role: ProjectConversationRole
+  content: string
+  created_at: string
+}
+
+export interface ProjectArtifact {
+  id: string
+  project_id: string
+  user_id: string
+  type: string
+  title: string
+  content: string
   created_at: string
   updated_at: string
 }

@@ -18,7 +18,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Ki',
+  title: 'ki',
   description: 'A living extension of your mind.',
 }
 

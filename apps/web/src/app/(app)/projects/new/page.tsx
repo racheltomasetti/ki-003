@@ -1,0 +1,334 @@
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { createProject } from '@ki/services'
+import type { ProjectMode } from '@ki/types'
+
+// ─── Step definitions ─────────────────────────────────────────────────────────
+
+const STEPS = [
+  {
+    key: 'what',
+    question: 'What are you building?',
+    hint: '',
+    required: true,
+    type: 'dual', // renders name input + what textarea
+  },
+  {
+    key: 'why',
+    question: 'Why are you building this?',
+    hint: '',
+    placeholder: 'I am building this because…',
+    required: true,
+    type: 'textarea',
+  },
+  {
+    key: 'success_looks_like',
+    question: 'What does success look like?',
+    hint: 'Be concrete. What would you see, feel, or ship that would tell you this worked?',
+    placeholder: "I'll know this worked when…",
+    required: true,
+    type: 'textarea',
+  },
+  {
+    key: 'open_question',
+    question: "What's the biggest open question you're sitting with?",
+    hint: "The thing keeping you up at night, or the fork in the road you haven't reached yet.",
+    placeholder: "I'm still figuring out…",
+    required: false,
+    type: 'textarea',
+  },
+  {
+    key: 'project_mode',
+    question: 'What kind of project is this?',
+    hint: 'Pick the one that fits best.',
+    required: false,
+    type: 'chips',
+    options: [
+      { value: 'building', label: 'Building something' },
+      { value: 'researching', label: 'Researching' },
+      { value: 'figuring_out', label: 'Figuring something out' },
+      { value: 'creating', label: 'Creating something' },
+    ],
+  },
+] as const
+
+type StepKey = typeof STEPS[number]['key']
+
+type Answers = {
+  name: string
+  what: string
+  why: string
+  success_looks_like: string
+  open_question: string
+  project_mode: ProjectMode | ''
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function NewProjectPage() {
+  const router = useRouter()
+  const [step, setStep] = useState(0)
+  const [answers, setAnswers] = useState<Answers>({
+    name: '',
+    what: '',
+    why: '',
+    success_looks_like: '',
+    open_question: '',
+    project_mode: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const current = STEPS[step]
+  const isLast = step === STEPS.length - 1
+
+  const canAdvance = (() => {
+    if (!current.required) return true
+    if (current.type === 'dual') return answers.name.trim().length > 0 && answers.what.trim().length > 0
+    const answer = answers[current.key as StepKey]
+    return typeof answer === 'string' && answer.trim().length > 0
+  })()
+
+  // Focus on step change
+  useEffect(() => {
+    if (current.type === 'dual') {
+      nameInputRef.current?.focus()
+    } else if (current.type === 'textarea') {
+      textareaRef.current?.focus()
+    }
+  }, [step, current.type])
+
+  const advance = () => {
+    if (!canAdvance) return
+    if (isLast) handleSubmit()
+    else setStep((s) => s + 1)
+  }
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>, key: string) => {
+    setAnswers((prev) => ({ ...prev, [key]: e.target.value }))
+    e.target.style.height = 'auto'
+    e.target.style.height = `${e.target.scrollHeight}px`
+  }
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault()
+      if (canAdvance) advance()
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (submitting) return
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const project = await createProject(supabase, user.id, {
+        name: answers.name.trim(),
+        what: answers.what.trim() || undefined,
+        why: answers.why.trim() || undefined,
+        success_looks_like: answers.success_looks_like.trim() || undefined,
+        open_question: answers.open_question.trim() || undefined,
+        project_mode: answers.project_mode || undefined,
+      })
+
+      router.push(`/projects/${project.id}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f6f1e6] dark:bg-[#1a1a1a] flex flex-col">
+
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-8 py-6">
+        <button
+          onClick={() => step === 0 ? router.push('/projects') : setStep((s) => s - 1)}
+          className="flex items-center gap-2 font-sans text-sm text-charcoal/40 dark:text-cream/40 hover:text-charcoal dark:hover:text-cream transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          {step === 0 ? 'Projects' : 'Back'}
+        </button>
+
+        {/* Step dots */}
+        <div className="flex items-center gap-2">
+          {STEPS.map((_, i) => (
+            <span
+              key={i}
+              className={[
+                'h-1.5 rounded-full transition-all duration-300',
+                i === step
+                  ? 'w-4 bg-terra'
+                  : i < step
+                  ? 'w-1.5 bg-charcoal/30 dark:bg-cream/30'
+                  : 'w-1.5 bg-charcoal/15 dark:bg-cream/15',
+              ].join(' ')}
+            />
+          ))}
+        </div>
+
+        <div className="w-16" />
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-24">
+        <div className="w-full max-w-2xl">
+
+          {/* Optional badge */}
+          {!current.required && (
+            <p className="font-sans text-xs font-semibold text-charcoal/30 dark:text-cream/30 uppercase tracking-widest mb-6">
+              Optional
+            </p>
+          )}
+
+          {/* Question */}
+          <h1 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal dark:text-cream leading-snug mb-3">
+            {current.question}
+          </h1>
+
+          {/* Hint */}
+          <p className="font-sans text-sm text-charcoal/45 dark:text-cream/45 leading-relaxed mb-10">
+            {current.hint}
+          </p>
+
+          {/* Dual — name + what */}
+          {current.type === 'dual' && (
+            <div className="space-y-8">
+              <div>
+                <label className="font-sans text-xs font-semibold text-charcoal/40 dark:text-cream/40 uppercase tracking-wider block mb-3">
+                  Title
+                </label>
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={answers.name}
+                  onChange={(e) => setAnswers((prev) => ({ ...prev, name: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      textareaRef.current?.focus()
+                    }
+                  }}
+                  placeholder="Ki"
+                  className="w-full font-serif text-2xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-terra outline-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-2"
+                />
+              </div>
+              <div>
+                <label className="font-sans text-xs font-semibold text-charcoal/40 dark:text-cream/40 uppercase tracking-wider block mb-3">
+                  Description
+                </label>
+                <textarea
+                  ref={textareaRef}
+                  value={answers.what}
+                  onChange={(e) => handleTextareaChange(e, 'what')}
+                  onKeyDown={handleTextareaKeyDown}
+                  placeholder="I'm building a tool that…"
+                  rows={4}
+                  className="w-full font-serif text-xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-terra outline-none resize-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-3"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Textarea — single contextual question */}
+          {current.type === 'textarea' && (
+            <textarea
+              ref={textareaRef}
+              value={answers[current.key as StepKey] as string}
+              onChange={(e) => handleTextareaChange(e, current.key)}
+              onKeyDown={handleTextareaKeyDown}
+              placeholder={'placeholder' in current ? current.placeholder : ''}
+              rows={4}
+              className="w-full font-serif text-xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-terra outline-none resize-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-3"
+            />
+          )}
+
+          {/* Chips — project mode */}
+          {current.type === 'chips' && 'options' in current && (
+            <div className="flex flex-wrap gap-3">
+              {current.options.map((opt) => {
+                const selected = answers.project_mode === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() =>
+                      setAnswers((prev) => ({
+                        ...prev,
+                        project_mode: selected ? '' : opt.value as ProjectMode,
+                      }))
+                    }
+                    className={[
+                      'px-5 py-3 rounded-xl border font-sans text-sm font-medium transition-all',
+                      selected
+                        ? 'bg-terra border-terra text-cream'
+                        : 'border-charcoal/20 dark:border-cream/20 text-charcoal/70 dark:text-cream/70 hover:border-charcoal/40 dark:hover:border-cream/40 hover:text-charcoal dark:hover:text-cream',
+                    ].join(' ')}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <p className="font-sans text-sm text-terra mt-4">{error}</p>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-between mt-12">
+            <p className="font-sans text-xs text-charcoal/25 dark:text-cream/25">
+              {(current.type === 'textarea' || current.type === 'dual') && canAdvance && '⌘↵ to continue'}
+            </p>
+
+            <div className="flex items-center gap-4">
+              {!current.required && !isLast && (
+                <button
+                  onClick={() => setStep((s) => s + 1)}
+                  className="font-sans text-sm text-charcoal/40 dark:text-cream/40 hover:text-charcoal dark:hover:text-cream transition-colors"
+                >
+                  Skip
+                </button>
+              )}
+
+              <button
+                onClick={advance}
+                disabled={!canAdvance || submitting}
+                className={[
+                  'flex items-center gap-2 px-6 py-3 rounded-xl font-sans text-sm font-semibold transition-all',
+                  canAdvance && !submitting
+                    ? 'bg-terra text-cream hover:bg-terra/90'
+                    : 'bg-charcoal/10 dark:bg-cream/10 text-charcoal/30 dark:text-cream/30 cursor-not-allowed',
+                ].join(' ')}
+              >
+                {submitting ? 'Creating…' : isLast ? 'Create project' : 'Continue'}
+                {!submitting && (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  )
+}

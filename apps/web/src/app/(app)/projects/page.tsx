@@ -3,6 +3,20 @@ import { createClient } from '@/lib/supabase/server'
 import { getProjects } from '@ki/services'
 import type { Project } from '@ki/types'
 
+function NewProjectButton() {
+  return (
+    <Link
+      href="/projects/new"
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-terra text-cream font-sans text-sm font-semibold hover:bg-terra/90 transition-colors"
+    >
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      New project
+    </Link>
+  )
+}
+
 function ProjectCard({ project }: { project: Project }) {
   const color = project.color ?? '#58a4b0'
 
@@ -28,11 +42,6 @@ function ProjectCard({ project }: { project: Project }) {
           {project.description}
         </p>
       )}
-
-      {/* Brief indicator */}
-      {project.brief && (
-        <p className="font-sans text-xs text-sage mt-3 ml-[1.375rem]">Brief ready</p>
-      )}
     </Link>
   )
 }
@@ -47,16 +56,16 @@ export default async function ProjectsPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-6">
-      <div className="mb-8">
-        <h1 className="font-serif text-3xl font-bold text-charcoal dark:text-cream mb-1">Projects</h1>
-        <p className="font-sans text-sm text-charcoal/45 dark:text-cream/45">
-          Your thinking, organized.
-        </p>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="font-serif text-3xl text-charcoal dark:text-cream mb-1">projects</h1>
+        </div>
+        <NewProjectButton />
       </div>
 
       {(!projects || projects.length === 0) && (
         <div className="font-sans text-sm text-charcoal/40 dark:text-cream/40 py-12 text-center">
-          No projects yet. Create one from the mobile app.
+          No projects yet.
         </div>
       )}
 

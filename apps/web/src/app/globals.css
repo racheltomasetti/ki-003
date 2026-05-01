@@ -14,15 +14,16 @@
   --font-sans: var(--font-poppins);
 }
 
-/* Base: cream background, charcoal text in light mode. Inverted in dark. */
+/* Class-based dark mode — responds to .dark on <html> (set by next-themes) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Base */
 body {
   background-color: theme(--color-cream);
   color: theme(--color-charcoal);
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: theme(--color-charcoal);
-    color: theme(--color-cream);
-  }
+.dark body {
+  background-color: #0f0e0e;
+  color: #f0ede8;
 }

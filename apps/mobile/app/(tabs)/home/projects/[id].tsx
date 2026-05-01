@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity,
-  ScrollView, StyleSheet, ActivityIndicator, Alert,
+  ScrollView, StyleSheet, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppTheme } from '@/hooks/useAppTheme'
-import { useProjects, useProjectCaptures, useGenerateBrief } from '@/hooks/useProjects'
+import { useProjects, useProjectCaptures } from '@/hooks/useProjects'
 import type { CaptureWithEnrichment } from '@ki/types'
 
 function formatTimestamp(dateStr: string): string {
@@ -68,25 +68,10 @@ export default function ProjectDetailScreen() {
 
   const { data: projects } = useProjects()
   const { data: captures, isLoading } = useProjectCaptures(id)
-  const generateBrief = useGenerateBrief()
 
   const project = projects?.find(p => p.id === id)
   const [activeTag, setActiveTag] = useState<string | null>(null)
-  const [showBrief, setShowBrief] = useState(false)
 
-  const captureCount = captures?.length ?? 0
-  const canGenerateBrief = captureCount >= 3
-
-  const handleGenerateBrief = () => {
-    generateBrief.mutate(id, {
-      onSuccess: () => setShowBrief(true),
-      onError: (err) => {
-        Alert.alert('Could not generate brief', err instanceof Error ? err.message : 'Try again.')
-      },
-    })
-  }
-
-  // Collect unique tags across all captures in this project
   const allTags = useMemo(() => {
     const map = new Map<string, string>()
     for (const c of captures ?? []) {
@@ -108,7 +93,6 @@ export default function ProjectDetailScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color={colors.foreground} />
@@ -119,22 +103,9 @@ export default function ProjectDetailScreen() {
         >
           {project?.name ?? ''}
         </Text>
-        <TouchableOpacity
-          onPress={() => project?.brief ? setShowBrief(v => !v) : handleGenerateBrief()}
-          disabled={!canGenerateBrief || generateBrief.isPending}
-          hitSlop={12}
-          style={styles.briefBtn}
-        >
-          {generateBrief.isPending
-            ? <ActivityIndicator size="small" color={accentColor} />
-            : <Text style={[styles.briefBtnText, { fontFamily: 'Poppins-Medium', color: canGenerateBrief ? accentColor : colors.foregroundSubtle }]}>
-                {project?.brief ? (showBrief ? 'Captures' : 'Brief') : 'Brief'}
-              </Text>
-          }
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
       </View>
 
-      {/* Project meta bar */}
       <View style={[styles.metaBar, { borderLeftColor: accentColor }]}>
         <Text style={[styles.metaCount, { fontFamily: 'Poppins-Regular', color: colors.foregroundMuted }]}>
           {isLoading ? '—' : `${filtered.length} capture${filtered.length !== 1 ? 's' : ''}`}
@@ -146,7 +117,6 @@ export default function ProjectDetailScreen() {
         ) : null}
       </View>
 
-      {/* Tag filters */}
       {allTags.length > 0 && (
         <ScrollView
           horizontal
@@ -190,28 +160,7 @@ export default function ProjectDetailScreen() {
         </ScrollView>
       )}
 
-      {/* Brief panel */}
-      {showBrief && project?.brief ? (
-        <ScrollView style={styles.captureList} contentContainerStyle={styles.listContent}>
-          <Text style={[styles.briefText, { fontFamily: 'Merriweather-Regular', color: colors.foreground }]}>
-            {project.brief}
-          </Text>
-          {project.brief_generated_at && (
-            <Text style={[styles.briefMeta, { fontFamily: 'Poppins-Regular', color: colors.foregroundSubtle }]}>
-              Generated {new Date(project.brief_generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </Text>
-          )}
-          <TouchableOpacity
-            onPress={handleGenerateBrief}
-            disabled={generateBrief.isPending}
-            style={[styles.regenerateBtn, { borderColor: colors.cardBorder }]}
-          >
-            <Text style={[styles.regenerateText, { fontFamily: 'Poppins-Medium', color: colors.foregroundMuted }]}>
-              {generateBrief.isPending ? 'Regenerating…' : 'Regenerate brief'}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      ) : isLoading ? (
+      {isLoading ? (
         <ActivityIndicator style={{ marginTop: 48 }} color={colors.foregroundMuted} />
       ) : (
         <FlatList
@@ -263,6 +212,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: 'center',
   },
+  headerSpacer: { width: 34 },
   metaBar: {
     marginHorizontal: 20,
     marginBottom: 12,
@@ -272,10 +222,7 @@ const styles = StyleSheet.create({
   },
   metaCount: { fontSize: 13 },
   metaDesc: { fontSize: 12 },
-  tagStrip: {
-    flexGrow: 0,
-    flexShrink: 0,
-  },
+  tagStrip: { flexGrow: 0, flexShrink: 0 },
   tagScroll: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -302,20 +249,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardTimestamp: { fontSize: 12 },
-  cardBody: {
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  tagPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
+  cardBody: { fontSize: 14, lineHeight: 22 },
+  tagRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  tagPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
   tagText: { fontSize: 11 },
   empty: {
     paddingTop: 80,
@@ -325,27 +261,4 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 16, textAlign: 'center' },
   emptyHint: { fontSize: 13, textAlign: 'center' },
-  briefBtn: {
-    width: 54,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    height: 34,
-  },
-  briefBtnText: { fontSize: 14 },
-  briefText: {
-    fontSize: 14,
-    lineHeight: 24,
-  },
-  briefMeta: {
-    fontSize: 11,
-    marginTop: 24,
-  },
-  regenerateBtn: {
-    marginTop: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  regenerateText: { fontSize: 13 },
 })

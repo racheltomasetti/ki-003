@@ -190,19 +190,19 @@ Generate the Project Brief now. Use this structure:
     }
 
     const claudeData = await claudeRes.json()
-    const brief = claudeData.content?.[0]?.text ?? ''
+    const ki = claudeData.content?.[0]?.text ?? ''
 
     // Save to the project
     const { error: updateErr } = await serviceClient
       .from('projects')
-      .update({ brief, brief_generated_at: new Date().toISOString() })
+      .update({ ki, ki_updated_at: new Date().toISOString() })
       .eq('id', project_id)
       .eq('user_id', user.id)
 
     if (updateErr) throw updateErr
 
     return new Response(
-      JSON.stringify({ brief, capture_count: captures.length }),
+      JSON.stringify({ ki, capture_count: captures.length }),
       { headers: { 'Content-Type': 'application/json' } }
     )
 

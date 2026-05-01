@@ -66,21 +66,3 @@ export function useRemoveCaptureFromProject() {
   })
 }
 
-export function useGenerateBrief() {
-  const queryClient = useQueryClient()
-  const { session } = useAuthStore()
-
-  return useMutation({
-    mutationFn: async (projectId: string) => {
-      const { data, error } = await supabase.functions.invoke('generate-brief', {
-        body: { project_id: projectId },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      return data as { brief: string; capture_count: number }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', session?.user.id] })
-    },
-  })
-}

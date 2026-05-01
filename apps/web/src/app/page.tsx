@@ -1,9 +1,8 @@
 import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 
-// Root route — redirect to sign-in.
-// Once auth middleware is in place this becomes a session check:
-//   session → /library
-//   no session → /sign-in
-export default function RootPage() {
-  redirect('/sign-in')
+export default async function RootPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  redirect(user ? '/home' : '/sign-in')
 }

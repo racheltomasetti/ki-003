@@ -508,39 +508,138 @@ export type Database = {
         }
         Relationships: []
       }
+      project_artifacts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          project_id: string
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_artifacts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_artifacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_conversations: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
-          brief: string | null
-          brief_generated_at: string | null
           color: string | null
           created_at: string
           description: string | null
           id: string
           name: string
+          open_question: string | null
+          project_mode: string | null
+          success_looks_like: string | null
           updated_at: string
           user_id: string
+          what: string | null
+          why: string | null
         }
         Insert: {
-          brief?: string | null
-          brief_generated_at?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name: string
+          open_question?: string | null
+          project_mode?: string | null
+          success_looks_like?: string | null
           updated_at?: string
           user_id: string
+          what?: string | null
+          why?: string | null
         }
         Update: {
-          brief?: string | null
-          brief_generated_at?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name?: string
+          open_question?: string | null
+          project_mode?: string | null
+          success_looks_like?: string | null
           updated_at?: string
           user_id?: string
+          what?: string | null
+          why?: string | null
         }
         Relationships: [
           {

@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ki — Web Interface v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;1,300;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0e0e;--bg2:#161514;--bg3:#1d1b1a;--bg4:#252220;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#f0ede8;--text2:#9e9b96;--text3:#5c5a57;
+  --terra:#9e2a2b;--terra2:#b83333;--terra-dim:rgba(158,42,43,0.12);
+  --ray:#efcb68;--ray-dim:rgba(239,203,104,0.1);
+  --pacific:#58a4b0;--pacific-dim:rgba(88,164,176,0.1);
+  --sage:#67934d;--sage-dim:rgba(103,147,77,0.1);
+  --serif:'Merriweather',Georgia,serif;--sans:'Poppins',sans-serif;
+  --r:10px;--rl:14px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5;overflow:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.app{display:flex;height:100vh}
+
+/* Sidebar */
+.sidebar{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.logo-area{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
+.logo{font-family:var(--serif);font-size:26px;font-weight:300;letter-spacing:-1px;line-height:1}
+.logo-sub{font-size:10px;color:var(--text3);margin-top:3px;font-style:italic;font-family:var(--serif)}
+.sb-nav{padding:10px 0;flex:1;overflow-y:auto}
+.nav-lbl{font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;padding:0 20px;margin:12px 0 3px}
+.ni{display:flex;align-items:center;gap:9px;padding:7px 20px;font-size:12.5px;color:var(--text2);cursor:pointer;transition:all .15s;border-left:2px solid transparent}
+.ni:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.ni.on{color:var(--text);background:var(--terra-dim);border-left-color:var(--terra);font-weight:500}
+.ni-ico{width:14px;text-align:center;font-size:13px;opacity:.7}
+.ni.on .ni-ico{opacity:1}
+.pni{display:flex;align-items:center;gap:9px;padding:5px 20px;font-size:12px;color:var(--text3);cursor:pointer;transition:all .15s;border-left:2px solid transparent}
+.pni:hover{color:var(--text2)}
+.pni.on{color:var(--text);border-left-color:var(--pc,var(--terra))}
+.pdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.new-p{display:flex;align-items:center;gap:8px;padding:5px 20px;font-size:11px;color:var(--text3);cursor:pointer;margin-top:2px}
+.new-p:hover{color:var(--terra)}
+.sb-foot{padding:12px 14px;border-top:1px solid var(--border)}
+.uc{display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:var(--r);transition:background .15s}
+.uc:hover{background:var(--bg3)}
+.av{width:28px;height:28px;border-radius:50%;background:var(--terra-dim);border:1px solid var(--terra);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--terra);flex-shrink:0}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:14px;flex-shrink:0}
+.tb-title{font-family:var(--serif);font-size:15px;font-weight:300;flex:1}
+.cmdk{display:flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r);font-size:11px;color:var(--text3);cursor:pointer;background:var(--bg3)}
+.ck{font-size:10px;background:var(--bg4);border:1px solid var(--border);padding:1px 5px;border-radius:4px}
+.btn{padding:6px 14px;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:var(--sans);transition:all .15s}
+.btn:hover{background:var(--bg4);color:var(--text)}
+.btn-p{background:var(--terra);border-color:var(--terra);color:#fff}
+.btn-p:hover{background:var(--terra2);border-color:var(--terra2)}
+.btn-s{padding:4px 12px;font-size:11px}
+
+/* Pages */
+.pg{flex:1;overflow:hidden;display:none}
+.pg.on{display:flex;flex-direction:column}
+.pg-sc{flex:1;overflow-y:auto;padding:24px}
+
+/* Home */
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
+.sl{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.sv{font-family:var(--serif);font-size:28px;font-weight:300;line-height:1}
+.ss{font-size:11px;color:var(--text3);margin-top:5px}
+.qc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin-bottom:20px}
+.qch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.qct{font-size:12px;font-weight:500;color:var(--text2)}
+.ps{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:20px;background:var(--bg3)}
+.qta{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;font-size:13px;color:var(--text);font-family:var(--serif);font-weight:300;resize:none;min-height:70px;line-height:1.6;outline:none;transition:border-color .15s}
+.qta::placeholder{color:var(--text3);font-style:italic}
+.qta:focus{border-color:var(--border2)}
+.qf{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.tps{display:flex;gap:4px}
+.tp{padding:4px 12px;border-radius:20px;font-size:11px;border:1px solid var(--border);color:var(--text3);cursor:pointer;background:transparent;font-family:var(--sans);transition:all .15s}
+.tp:hover{border-color:var(--border2);color:var(--text2)}
+.tp.on{border-color:var(--terra);color:var(--terra);background:var(--terra-dim)}
+.hg{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:16px}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.st{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.07em}
+.sl2{font-size:11px;color:var(--terra);cursor:pointer}
+.pc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.pc:hover{border-color:var(--border2);background:var(--bg3)}
+.pc.hi{border-color:var(--terra)}
+.pt{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.pn{font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px}
+.bdg{font-size:9px;font-weight:500;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em}
+.bb{background:var(--terra-dim);color:var(--terra)}
+.bc{background:var(--ray-dim);color:var(--ray)}
+.br{background:var(--pacific-dim);color:var(--pacific)}
+.pm{font-size:11px;color:var(--text3)}
+.pd{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:10px;font-family:var(--serif);font-weight:300;font-style:italic}
+.pf{display:flex;align-items:center;gap:12px}
+.ks{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
+.kd{width:5px;height:5px;border-radius:50%}
+.ac{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.ai{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.ai:last-child{border-bottom:none}
+.ai:hover{background:var(--bg3)}
+.aico{width:28px;height:28px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.av2{background:var(--terra-dim)}
+.at2{background:var(--pacific-dim)}
+.ak2{background:var(--ray-dim)}
+.ab{flex:1;min-width:0}
+.at{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.am{font-size:10px;color:var(--text3);margin-top:1px}
+.bg{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tc,.scc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
+.tch{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;margin:3px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);cursor:pointer;transition:all .15s}
+.tch:hover{border-color:var(--border2);color:var(--text)}
+.tcn{color:var(--text3);font-size:10px}
+.sd{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}
+.day{width:22px;height:22px;border-radius:5px;background:var(--bg3);border:1px solid var(--border)}
+.day.d{background:var(--terra);border-color:var(--terra)}
+.day.t{background:transparent;border-color:var(--terra)}
+
+/* Library */
+.ltb{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.sb2{flex:1;display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px}
+.si{flex:1;background:transparent;border:none;outline:none;font-size:13px;color:var(--text);font-family:var(--sans)}
+.si::placeholder{color:var(--text3)}
+.fb{padding:7px 14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);color:var(--text3);font-size:12px;cursor:pointer;font-family:var(--sans);transition:all .15s}
+.fb:hover{border-color:var(--border2);color:var(--text2)}
+.fb.on{border-color:var(--terra);color:var(--terra);background:var(--terra-dim)}
+.ci{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.ci:hover .ct{color:var(--terra)}
+.ci.lit{background:rgba(158,42,43,.06);margin:0 -4px;padding:14px 4px;border-radius:var(--r);border-bottom-color:transparent;border:1px solid var(--terra-dim)}
+.cico{width:32px;height:32px;border-radius:var(--r);background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:2px}
+.cb2{flex:1;min-width:0}
+.ct{font-size:13px;margin-bottom:3px;transition:color .15s}
+.csum{font-size:12px;color:var(--text3);font-family:var(--serif);font-style:italic;font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.ctags{display:flex;gap:4px;flex-wrap:wrap}
+.ctag{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+.cm2{font-size:10px;color:var(--text3);margin-top:4px}
+.cstar{color:var(--ray);padding:4px;cursor:pointer;margin-top:2px}
+
+/* Project layout */
+.proj-pg{display:flex;height:100%;overflow:hidden;width:100%}
+
+/* Left captures panel */
+.cap-panel{width:260px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg2);transition:width .2s,overflow .2s}
+.cap-panel.closed{width:0;overflow:hidden}
+.cph{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.cpt{font-size:12px;font-weight:500;color:var(--text2)}
+.cpb{flex:1;overflow-y:auto;padding:10px}
+.cm{padding:9px 11px;border-radius:var(--r);border:1px solid var(--border);margin-bottom:5px;cursor:pointer;transition:all .2s;background:var(--bg3)}
+.cm:hover{border-color:var(--border2)}
+.cm.lit{border-color:var(--terra);background:rgba(158,42,43,.08);animation:pg .7s ease}
+@keyframes pg{0%{box-shadow:0 0 0 0 rgba(158,42,43,.5)}70%{box-shadow:0 0 0 8px rgba(158,42,43,0)}100%{box-shadow:0 0 0 0 rgba(158,42,43,0)}}
+.cmt{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.cmm{font-size:10px;color:var(--text3)}
+.cm.lit .cmt{color:var(--terra)}
+
+/* Center */
+.proj-center{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* Context builder */
+.ctx-builder{flex-shrink:0;border-bottom:1px solid var(--border);padding:18px 22px;background:var(--bg)}
+.cbh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cbt{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.07em}
+.cba{display:flex;gap:6px;align-items:center}
+.refs-row{display:none;margin-bottom:8px;flex-wrap:wrap;gap:5px}
+.refs-row.show{display:flex}
+.rc{display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;background:var(--terra-dim);color:var(--terra);border:1px solid rgba(158,42,43,.3)}
+.rcd{width:4px;height:4px;border-radius:50%;background:var(--terra)}
+.cbta{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;font-size:13px;color:var(--text);font-family:var(--serif);font-weight:300;resize:none;height:120px;line-height:1.7;outline:none;transition:border-color .15s}
+.cbta::placeholder{color:var(--text3);font-style:italic}
+.cbta:focus{border-color:var(--border2)}
+.cbf{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.cbhint{font-size:11px;color:var(--text3);font-style:italic}
+.cpybtn{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--r);background:var(--terra);border:none;color:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:all .15s}
+.cpybtn:hover{background:var(--terra2)}
+.cpybtn.ok{background:var(--sage)}
+
+/* History */
+.hist-area{flex:1;overflow-y:auto;padding:18px 22px}
+.hah{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.hat{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+.he{margin-bottom:18px;position:relative;padding-left:18px}
+.he::before{content:'';position:absolute;left:5px;top:0;bottom:-18px;width:1px;background:var(--border)}
+.he:last-child::before{display:none}
+.hdot{position:absolute;left:0;top:5px;width:11px;height:11px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center}
+.hdi{width:5px;height:5px;border-radius:50%;background:var(--terra)}
+.hts{font-size:10px;color:var(--text3);margin-bottom:5px}
+.hb{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;font-family:var(--serif);font-size:12px;font-weight:300;color:var(--text2);line-height:1.7;cursor:pointer;transition:border-color .15s}
+.hb:hover{border-color:var(--border2)}
+.hrefs{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.hrc{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--terra-dim);color:var(--terra);border:1px solid rgba(158,42,43,.2)}
+.hempty{text-align:center;padding:40px 20px;color:var(--text3)}
+.het{font-family:var(--serif);font-size:16px;font-weight:300;margin-bottom:8px;color:var(--text2)}
+.hes{font-size:12px;line-height:1.6}
+
+/* Chat panel */
+.chat-panel{width:310px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg2)}
+.chh{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.chht{font-size:13px;font-weight:500}
+.chhs{font-size:11px;color:var(--text3);margin-top:1px}
+.cxb{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3);background:var(--bg3);padding:3px 9px;border-radius:20px;border:1px solid var(--border)}
+.cxd{width:5px;height:5px;border-radius:50%;background:var(--sage)}
+.chm{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px}
+.msg{max-width:100%}
+.mu{align-self:flex-end}
+.ma{align-self:flex-start}
+.bbl{padding:9px 12px;border-radius:12px;font-size:12px;line-height:1.6}
+.mu .bbl{background:var(--terra);color:#fff;border-radius:12px 12px 2px 12px}
+.ma .bbl{background:var(--bg3);border:1px solid var(--border);border-radius:12px 12px 12px 2px}
+.mt{font-size:10px;color:var(--text3);margin-top:2px;padding:0 3px}
+.mu .mt{text-align:right}
+.ccs{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.cc{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--bg4);color:var(--text3);border:1px solid var(--border);cursor:pointer;transition:all .15s}
+.cc:hover{border-color:var(--terra);color:var(--terra);background:var(--terra-dim)}
+.sa{margin-top:7px;padding:9px 11px;background:var(--ray-dim);border:1px solid rgba(239,203,104,.3);border-radius:var(--r)}
+.sal{font-size:10px;color:var(--ray);font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.sap{font-family:var(--serif);font-size:11px;font-weight:300;color:var(--text2);font-style:italic;line-height:1.6;margin-bottom:7px}
+.sabs{display:flex;gap:5px}
+.sab{padding:4px 10px;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s}
+.saok{background:var(--sage);color:#fff}
+.saok:hover{background:#7aad5c}
+.sano{background:var(--bg4);color:var(--text3)}
+.sano:hover{background:var(--bg3);color:var(--text2)}
+.chia{padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0}
+.chss{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.chs{font-size:10px;padding:3px 9px;border:1px solid var(--border);border-radius:20px;color:var(--text3);cursor:pointer;background:transparent;font-family:var(--sans);transition:all .15s}
+.chs:hover{border-color:var(--terra);color:var(--terra);background:var(--terra-dim)}
+.chw{display:flex;align-items:flex-end;gap:7px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);padding:7px 9px;transition:border-color .15s}
+.chw:focus-within{border-color:var(--border2)}
+.chin{flex:1;background:transparent;border:none;outline:none;font-size:12px;color:var(--text);font-family:var(--sans);resize:none;min-height:20px;max-height:70px;line-height:1.5}
+.chin::placeholder{color:var(--text3);font-style:italic}
+.sndbtn{width:26px;height:26px;border-radius:7px;background:var(--terra);border:none;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.sndbtn:hover{background:var(--terra2)}
+
+/* Explore */
+.exl{display:flex;height:100%;overflow:hidden}
+.exm{flex:1;overflow-y:auto;padding:26px 28px;min-width:0;border-right:1px solid var(--border)}
+.exc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:18px;margin-bottom:14px}
+.ext{font-family:var(--serif);font-size:16px;font-weight:300;margin-bottom:3px}
+.exs{font-size:12px;color:var(--text3);margin-bottom:12px}
+.pg2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.pi{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px}
+.pl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.pv{font-family:var(--serif);font-size:17px;font-weight:300}
+.pb{height:3px;background:var(--bg4);border-radius:2px;margin-top:7px;overflow:hidden}
+.pf2{height:100%;border-radius:2px;background:var(--terra)}
+.qi{padding:11px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);font-family:var(--serif);font-size:13px;font-weight:300;color:var(--text2);font-style:italic;border-left:3px solid var(--terra);margin-bottom:7px}
+
+/* Profile */
+.prsc{flex:1;overflow-y:auto;padding:26px 28px;max-width:680px}
+.mmc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:10px}
+.mmh{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border)}
+.mmt{font-size:13px;font-weight:500}
+.mme{font-size:11px;color:var(--text3);cursor:pointer}
+.mme:hover{color:var(--terra)}
+.mmb{padding:13px 16px;font-family:var(--serif);font-size:13px;font-weight:300;color:var(--text2);line-height:1.8}
+
+/* toggle btn */
+.tgb{display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:transparent;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:10px;transition:all .15s;flex-shrink:0}
+.tgb:hover{background:var(--bg4);color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="logo-area">
+    <div class="logo">Ki</div>
+    <div class="logo-sub">in the pursuit of self</div>
+  </div>
+  <div class="sb-nav">
+    <div class="ni on" onclick="go('home',this)"><span class="ni-ico">⌂</span>Home</div>
+    <div class="ni" onclick="go('lib',this)"><span class="ni-ico">▤</span>Library</div>
+    <div class="ni" onclick="go('explore',this)"><span class="ni-ico">◎</span>Explore</div>
+    <div class="nav-lbl">Projects</div>
+    <div class="pni on" style="--pc:#9e2a2b" onclick="gop('ki',this)"><div class="pdot" style="background:#9e2a2b"></div>ki</div>
+    <div class="pni" style="--pc:#efcb68" onclick="gop('ray',this)"><div class="pdot" style="background:#efcb68"></div>raybuilds021</div>
+    <div class="pni" style="--pc:#58a4b0" onclick="gop('air',this)"><div class="pdot" style="background:#58a4b0"></div>airbnb website</div>
+    <div class="new-p"><span style="font-size:14px">+</span>new project</div>
+    <div class="nav-lbl" style="margin-top:8px"></div>
+    <div class="ni" onclick="go('profile',this)"><span class="ni-ico">◉</span>Profile & Ki</div>
+  </div>
+  <div class="sb-foot">
+    <div class="uc" onclick="go('profile',null)">
+      <div class="av">R</div>
+      <div><div style="font-size:12px;font-weight:500">Ray</div><div style="font-size:10px;color:var(--text3)">build.ray.build</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div class="tb-title" id="tbt">Good morning, Ray</div>
+    <div class="cmdk"><span>Search or ask Ki</span><span class="ck">⌘K</span></div>
+    <button class="btn btn-p">+ Capture</button>
+  </div>
+
+  <!-- HOME -->
+  <div class="pg on" id="pg-home">
+    <div class="pg-sc">
+      <div class="sg">
+        <div class="sc"><div class="sl">Total captures</div><div class="sv">247</div><div class="ss">+12 this week</div></div>
+        <div class="sc"><div class="sl">Capture streak</div><div class="sv" style="color:var(--terra)">14d</div><div class="ss">personal best</div></div>
+        <div class="sc"><div class="sl">Active projects</div><div class="sv">3</div><div class="ss">2 with outputs</div></div>
+        <div class="sc"><div class="sl">Enriched</div><div class="sv" style="color:var(--ray)">231</div><div class="ss">16 pending</div></div>
+      </div>
+      <div class="qc">
+        <div class="qch"><div class="qct">Quick capture</div><div class="ps"><div class="pdot" style="background:#9e2a2b"></div>ki ▾</div></div>
+        <textarea class="qta" placeholder="What's on your mind..."></textarea>
+        <div class="qf">
+          <div class="tps"><button class="tp on">✎ text</button><button class="tp" onclick="seltp(this)">🎙 voice</button><button class="tp" onclick="seltp(this)">📎 file</button></div>
+          <button class="btn btn-p btn-s">capture</button>
+        </div>
+      </div>
+      <div class="hg">
+        <div>
+          <div class="sh"><div class="st">Projects</div><div class="sl2">view all →</div></div>
+          <div class="pc hi" onclick="gop('ki',null)">
+            <div class="pt"><div class="pn"><div class="pdot" style="background:#9e2a2b;width:8px;height:8px"></div>ki<span class="bdg bb">building</span></div><div class="pm">2h ago</div></div>
+            <div class="pd">"A personal intelligence system for builders — from scattered thinking to something you can build from."</div>
+            <div class="pf"><div class="pm">89 captures</div><div class="pm">12 outputs</div><div class="ks"><div class="kd" style="background:var(--sage)"></div>active</div></div>
+          </div>
+          <div class="pc" onclick="gop('ray',null)">
+            <div class="pt"><div class="pn"><div class="pdot" style="background:#efcb68;width:8px;height:8px"></div>raybuilds021<span class="bdg bc">creating</span></div><div class="pm">yesterday</div></div>
+            <div class="pd">"Personal brand — in the pursuit of Self. Mindset, Movement, Mastery."</div>
+            <div class="pf"><div class="pm">34 captures</div><div class="pm">5 outputs</div><div class="ks"><div class="kd" style="background:var(--ray)"></div>draft</div></div>
+          </div>
+          <div class="pc" onclick="gop('air',null)">
+            <div class="pt"><div class="pn"><div class="pdot" style="background:#58a4b0;width:8px;height:8px"></div>airbnb website<span class="bdg bb">building</span></div><div class="pm">3d ago</div></div>
+            <div class="pd">"Mango farm property — showcase the space and drive bookings."</div>
+            <div class="pf"><div class="pm">18 captures</div><div class="pm">0 outputs</div><div class="ks"><div class="kd" style="background:var(--text3)"></div>no outputs</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="sh"><div class="st">Recent activity</div><div class="sl2" onclick="go('lib',null)">library →</div></div>
+          <div class="ac">
+            <div class="ai" onclick="gop('ki',null)"><div class="aico av2">🎙</div><div class="ab"><div class="at">Voice — ki build session</div><div class="am">ki · 2h ago · enriched</div></div></div>
+            <div class="ai" onclick="gop('ki',null)"><div class="aico ak2">◈</div><div class="ab"><div class="at">Context output copied</div><div class="am">ki · 3h ago</div></div></div>
+            <div class="ai" onclick="go('lib',null)"><div class="aico at2">✎</div><div class="ab"><div class="at">Thought on canvas model</div><div class="am">ki · yesterday</div></div></div>
+            <div class="ai" onclick="gop('ray',null)"><div class="aico av2">🎙</div><div class="ab"><div class="at">Morning pages — mastery</div><div class="am">raybuilds021 · yesterday</div></div></div>
+            <div class="ai" onclick="gop('air',null)"><div class="aico at2">✎</div><div class="ab"><div class="at">Property description draft</div><div class="am">airbnb · 3d ago</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bg">
+        <div class="tc">
+          <div class="sh"><div class="st">Recurring themes</div><div class="sl2" onclick="go('explore',null)">explore →</div></div>
+          <span class="tch">mind extension <span class="tcn">24</span></span>
+          <span class="tch">building systems <span class="tcn">19</span></span>
+          <span class="tch">distillation <span class="tcn">17</span></span>
+          <span class="tch">pursuit of self <span class="tcn">14</span></span>
+          <span class="tch">RAG pipeline <span class="tcn">11</span></span>
+          <span class="tch">mastery <span class="tcn">8</span></span>
+          <span class="tch">clarity <span class="tcn">7</span></span>
+        </div>
+        <div class="scc">
+          <div class="sh"><div class="st">Capture streak</div><div style="font-family:var(--serif);font-size:24px;font-weight:300;color:var(--terra)">14</div></div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px">consecutive days</div>
+          <div class="sd">
+            <div class="day d"></div><div class="day d"></div><div class="day d"></div><div class="day d"></div><div class="day d"></div><div class="day d"></div><div class="day d"></div>
+            <div class="day d"></div><div class="day d"></div><div class="day d"></div><div class="day d"></div><div class="day d"></div><div class="day d"></div><div class="day t"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:9px">capture today to keep the streak</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIBRARY -->
+  <div class="pg" id="pg-lib">
+    <div class="pg-sc">
+      <div class="ltb">
+        <div class="sb2"><span style="color:var(--text3)">🔍</span><input class="si" placeholder="Search by meaning, not just keywords..."/></div>
+        <button class="fb on">all</button>
+        <button class="fb" onclick="sf(this)">voice</button>
+        <button class="fb" onclick="sf(this)">text</button>
+        <button class="fb" onclick="sf(this)">starred ★</button>
+      </div>
+      <div class="ci"><div class="cico">🎙</div><div class="cb2"><div style="display:flex;justify-content:space-between"><div class="ct">Ki build session — enrichment pipeline and canvas</div><span class="cstar">★</span></div><div class="csum">"The canvas might not be the primary interface — what we need is artifacts..."</div><div class="ctags"><span class="ctag">ki</span><span class="ctag">building systems</span><span class="ctag">distillation</span></div><div class="cm2">voice · 2h ago · enriched · 3m 42s</div></div></div>
+      <div class="ci"><div class="cico">✎</div><div class="cb2"><div style="display:flex;justify-content:space-between"><div class="ct">Thought on the canvas interaction model</div><span class="cstar" style="color:var(--text3)">☆</span></div><div class="csum">"Phantom diagram — like cursor showing diff before accepting..."</div><div class="ctags"><span class="ctag">ki</span><span class="ctag">UX</span></div><div class="cm2">text · yesterday · enriched</div></div></div>
+      <div class="ci"><div class="cico">🎙</div><div class="cb2"><div style="display:flex;justify-content:space-between"><div class="ct">Morning pages — mindset and mastery</div><span class="cstar">★</span></div><div class="csum">"Mastery is the never-ending pursuit. You never arrive..."</div><div class="ctags"><span class="ctag">raybuilds021</span><span class="ctag">mastery</span></div><div class="cm2">voice · yesterday · enriched · 8m 14s</div></div></div>
+      <div class="ci"><div class="cico">📎</div><div class="cb2"><div style="display:flex;justify-content:space-between"><div class="ct">Ki PRD — final version</div><span class="cstar">★</span></div><div class="csum">"Ki is a personal intelligence system — a living extension of your mind..."</div><div class="ctags"><span class="ctag">ki</span><span class="ctag">vision</span><span class="ctag">24 chunks</span></div><div class="cm2">file · 2d ago · enriched</div></div></div>
+      <div class="ci"><div class="cico">✎</div><div class="cb2"><div style="display:flex;justify-content:space-between"><div class="ct">Airbnb property description draft</div><span class="cstar" style="color:var(--text3)">☆</span></div><div class="csum">"Nestled in a mango grove with mountain views..."</div><div class="ctags"><span class="ctag">airbnb</span><span class="ctag">copy</span></div><div class="cm2">text · 3d ago · enriched</div></div></div>
+    </div>
+  </div>
+
+  <!-- PROJECT KI -->
+  <div class="pg" id="pg-ki">
+    <div class="proj-pg">
+      <!-- Left: captures -->
+      <div class="cap-panel" id="cpp-ki">
+        <div class="cph">
+          <div class="cpt">Captures <span style="color:var(--text3);font-weight:400">(89)</span></div>
+          <button class="tgb" onclick="tcp('ki')" title="collapse">◂</button>
+        </div>
+        <div style="padding:7px 10px;border-bottom:1px solid var(--border)">
+          <input style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:5px 9px;font-size:11px;color:var(--text);font-family:var(--sans);outline:none" placeholder="search captures..."/>
+        </div>
+        <div class="cpb" id="cpb-ki">
+          <div class="cm lit" id="c1"><div class="cmt">Ki build session — enrichment pipeline</div><div class="cmm">voice · 2h ago ★</div></div>
+          <div class="cm" id="c2"><div class="cmt">Thought on canvas interaction model</div><div class="cmm">text · yesterday</div></div>
+          <div class="cm lit" id="c3"><div class="cmt">Ki PRD — final version</div><div class="cmm">file · 2d ago ★ · 24 chunks</div></div>
+          <div class="cm" id="c4"><div class="cmt">Web first — mobile companion realization</div><div class="cmm">voice · 3d ago ★</div></div>
+          <div class="cm" id="c5"><div class="cmt">Memory document architecture</div><div class="cmm">text · 4d ago</div></div>
+          <div class="cm" id="c6"><div class="cmt">RAG pipeline — two layer context</div><div class="cmm">voice · 5d ago ★</div></div>
+          <div class="cm" id="c7"><div class="cmt">Project as context builder vision</div><div class="cmm">voice · 6d ago</div></div>
+          <div class="cm" id="c8"><div class="cmt">Ki is a tool for deep work</div><div class="cmm">text · 1w ago ★</div></div>
+        </div>
+      </div>
+
+      <!-- Center -->
+      <div class="proj-center">
+        <div class="ctx-builder">
+          <div class="cbh">
+            <div>
+              <div class="cbt">Context builder</div>
+            </div>
+            <div class="cba">
+              <button class="tgb" id="opn-ki" style="display:none" onclick="tcp('ki')" title="show captures">▸</button>
+              <button class="btn btn-s" onclick="clr()">clear</button>
+            </div>
+          </div>
+          <div class="refs-row show" id="refs-ki">
+            <div class="rc"><div class="rcd"></div>Ki build session</div>
+            <div class="rc"><div class="rcd"></div>Ki PRD</div>
+          </div>
+          <textarea class="cbta" id="cbt-ki" placeholder="Your context block is crafted here through conversation with Ki → Talk through what you are building, what you need from an agent, what constraints exist. Ki reads your captures and helps you say exactly what you mean. When it feels right — copy it.">I'm building Ki, a personal intelligence system for builders. The core problem: builders have great thinking that gets lost in the flow of execution. Ki captures that thinking and distills it into precise, portable context that any agent can act on.
+
+Current focus: implementing the web-first project interface. Three panels — captures on the left, context builder in the center, Ki chat on the right. When Ki references a capture in chat, that capture highlights with a pulse glow in the left panel.
+
+What I need: implement the cite-chip → capture highlight interaction. When .cite-chip is clicked in chat, find the matching .cap-mini by ID and add the .lit class to trigger the pulse-glow CSS animation. Remove .lit from all others first.</textarea>
+          <div class="cbf">
+            <div class="cbhint">Ki shaped this from 2 captures · edited by you</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-s">save draft</button>
+              <button class="cpybtn" id="cpybtn-ki" onclick="cpy('ki')"><span>copy</span><span style="font-size:13px">⎘</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="hist-area">
+          <div class="hah">
+            <div class="hat">Output history — evolution of your thinking</div>
+            <div style="font-size:11px;color:var(--text3)">every copy saved automatically</div>
+          </div>
+          <div class="he">
+            <div class="hdot"><div class="hdi"></div></div>
+            <div class="hts">Today · 9:41 AM · copied to clipboard</div>
+            <div class="hb">I'm building Ki, a personal intelligence system for builders. The core problem: builders have great thinking that gets lost in execution. Ki captures that thinking and distills it into precise context any agent can act on. Current focus: the web-first project interface with context builder, captures panel, and Ki chat...</div>
+            <div class="hrefs"><span class="hrc">Ki build session</span><span class="hrc">Ki PRD</span></div>
+          </div>
+          <div class="he">
+            <div class="hdot"><div class="hdi"></div></div>
+            <div class="hts">Yesterday · 3:22 PM · copied to clipboard</div>
+            <div class="hb">Ki is a thinking tool for builders. The enrichment pipeline takes voice and text captures, runs them through Claude Haiku for structured extraction, and generates embeddings via OpenAI. The chat uses a two-layer RAG: memory document (~800 tokens) + top 10 semantically relevant captures (~2500 tokens)...</div>
+            <div class="hrefs"><span class="hrc">enrichment pipeline</span><span class="hrc">RAG architecture</span></div>
+          </div>
+          <div class="he">
+            <div class="hdot"><div class="hdi"></div></div>
+            <div class="hts">2 days ago · 11:05 AM · copied to clipboard</div>
+            <div class="hb">Building Ki — a personal intelligence system. The core thesis: Ki only knows what you give it. No hallucination. Every insight is grounded in your actual captures. Mobile is the intake valve. Web is where deep work happens...</div>
+            <div class="hrefs"><span class="hrc">Ki PRD</span><span class="hrc">web first realization</span></div>
+          </div>
+          <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px;font-family:var(--serif);font-style:italic">copy a context block to add it to your history</div>
+        </div>
+      </div>
+
+      <!-- Right: Ki chat -->
+      <div class="chat-panel">
+        <div class="chh">
+          <div><div class="chht">Ki</div><div class="chhs">project thinking partner</div></div>
+          <div class="cxb"><div class="cxd"></div>89 captures</div>
+        </div>
+        <div class="chm" id="chm-ki">
+          <div class="msg ma">
+            <div class="bbl">I have read through all 89 captures in this project. Your thinking has evolved significantly — from "journal app" to "builder's intelligence system" to what it is now: a tool that sits between your thinking and your execution tools, helping you say exactly what you mean before handing off to any agent.<br><br>The context block I shaped draws from your two most relevant captures. Want to refine it or work on something else?</div>
+            <div class="ccs">
+              <span class="cc" onclick="hlt('c1')">📍 Ki build session</span>
+              <span class="cc" onclick="hlt('c3')">📍 Ki PRD</span>
+            </div>
+            <div class="mt">Ki · just now</div>
+          </div>
+          <div class="msg mu">
+            <div class="bbl">make the ask more specific — exactly what I need Claude Code to implement</div>
+            <div class="mt">you · just now</div>
+          </div>
+          <div class="msg ma">
+            <div class="bbl">Got it. Based on your captures about the interface, the specific ask is the cite-chip highlight interaction. Here is a tighter version:
+              <div class="sa">
+                <div class="sal">✦ Ki suggests adding</div>
+                <div class="sap">What I need from you: when a .cite-chip is clicked in the chat panel, find the matching .cap-mini element by ID and add the .lit class — triggering the pulse-glow CSS animation defined in the stylesheet. Remove .lit from all others first. The animation should auto-clear after 3 seconds.</div>
+                <div class="sabs">
+                  <button class="sab saok" onclick="addtoctx(this)">add to context</button>
+                  <button class="sab sano" onclick="this.closest('.msg').style.opacity='.5'">not now</button>
+                </div>
+              </div>
+            </div>
+            <div class="ccs">
+              <span class="cc" onclick="hlt('c1')">📍 Ki build session</span>
+              <span class="cc" onclick="hlt('c4')">📍 web first realization</span>
+            </div>
+            <div class="mt">Ki · just now</div>
+          </div>
+        </div>
+        <div class="chia">
+          <div class="chss">
+            <button class="chs" onclick="sug(this)">refine context block</button>
+            <button class="chs" onclick="sug(this)">what am I missing?</button>
+            <button class="chs" onclick="sug(this)">generate a diagram</button>
+            <button class="chs" onclick="sug(this)">most relevant captures?</button>
+          </div>
+          <div class="chw">
+            <textarea class="chin" id="chin-ki" rows="1" placeholder="Talk to Ki about this project..."></textarea>
+            <button class="sndbtn" onclick="snd('ki')">↑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECT RAYBUILDS -->
+  <div class="pg" id="pg-ray">
+    <div class="proj-pg">
+      <div class="cap-panel" id="cpp-ray">
+        <div class="cph"><div class="cpt">Captures <span style="color:var(--text3);font-weight:400">(34)</span></div><button class="tgb" onclick="tcp('ray')">◂</button></div>
+        <div class="cpb">
+          <div class="cm"><div class="cmt">In the pursuit of self — website vision</div><div class="cmm">voice · yesterday ★</div></div>
+          <div class="cm"><div class="cmt">The three M's — mindset movement mastery</div><div class="cmm">voice · 2d ago ★</div></div>
+          <div class="cm"><div class="cmt">Hero tagline — into the mind</div><div class="cmm">text · 3d ago</div></div>
+          <div class="cm"><div class="cmt">Coaching offer — partnership vision</div><div class="cmm">voice · 4d ago</div></div>
+          <div class="cm"><div class="cmt">0 to 1 — the origin story</div><div class="cmm">voice · 5d ago ★</div></div>
+        </div>
+      </div>
+      <div class="proj-center">
+        <div class="ctx-builder">
+          <div class="cbh"><div><div class="cbt">Context builder</div></div><div class="cba"><button class="tgb" id="opn-ray" style="display:none" onclick="tcp('ray')">▸</button><button class="btn btn-s">clear</button></div></div>
+          <textarea class="cbta" placeholder="Talk to Ki in the sidebar → Ki will help you craft a context block from your captures..."></textarea>
+          <div class="cbf"><div class="cbhint">empty — start a conversation with Ki →</div><div><button class="cpybtn" onclick="cpy('ray')"><span>copy</span><span style="font-size:13px">⎘</span></button></div></div>
+        </div>
+        <div class="hist-area">
+          <div class="hah"><div class="hat">Output history</div></div>
+          <div class="he">
+            <div class="hdot"><div class="hdi"></div></div>
+            <div class="hts">2 days ago · 2:14 PM · copied</div>
+            <div class="hb">I'm building my personal brand around the philosophy: everything starts in the mind. Mindset, Movement, Mastery — three practices, one pursuit. Website: racheltomasetti.com. Hero: "In the pursuit of Self." Coaching offer: a partnership for builders who want to go deeper...</div>
+            <div class="hrefs"><span class="hrc">three M's</span><span class="hrc">coaching vision</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-panel">
+        <div class="chh"><div><div class="chht">Ki</div><div class="chhs">project thinking partner</div></div><div class="cxb"><div class="cxd"></div>34 captures</div></div>
+        <div class="chm"><div class="msg ma"><div class="bbl">Your captures here are rich with personal philosophy. The "in the pursuit of Self" through-line connects everything. What do you want to craft context for?</div><div class="mt">Ki · ready</div></div></div>
+        <div class="chia">
+          <div class="chss"><button class="chs">craft website context</button><button class="chs">write the one-pager</button><button class="chs">what's my core offer?</button></div>
+          <div class="chw"><textarea class="chin" rows="1" placeholder="Talk to Ki..."></textarea><button class="sndbtn">↑</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECT AIRBNB -->
+  <div class="pg" id="pg-air">
+    <div class="proj-pg">
+      <div class="cap-panel" id="cpp-air">
+        <div class="cph"><div class="cpt">Captures <span style="color:var(--text3);font-weight:400">(18)</span></div><button class="tgb" onclick="tcp('air')">◂</button></div>
+        <div class="cpb">
+          <div class="cm"><div class="cmt">Property description draft</div><div class="cmm">text · 3d ago</div></div>
+          <div class="cm"><div class="cmt">Mango grove — what makes it special</div><div class="cmm">voice · 4d ago ★</div></div>
+          <div class="cm"><div class="cmt">Target guest — who is this for</div><div class="cmm">text · 5d ago</div></div>
+          <div class="cm"><div class="cmt">Website sections brainstorm</div><div class="cmm">voice · 6d ago</div></div>
+        </div>
+      </div>
+      <div class="proj-center">
+        <div class="ctx-builder">
+          <div class="cbh"><div><div class="cbt">Context builder</div></div><div class="cba"><button class="tgb" id="opn-air" style="display:none" onclick="tcp('air')">▸</button><button class="btn btn-s">clear</button></div></div>
+          <textarea class="cbta" placeholder="Talk to Ki to craft your context block..."></textarea>
+          <div class="cbf"><div class="cbhint">empty — start a conversation with Ki →</div><div><button class="cpybtn" onclick="cpy('air')"><span>copy</span><span style="font-size:13px">⎘</span></button></div></div>
+        </div>
+        <div class="hist-area">
+          <div class="hah"><div class="hat">Output history</div></div>
+          <div class="hempty"><div class="het">No outputs yet</div><div class="hes">Talk to Ki, craft a context block, and copy it. Every copy is saved here automatically — building a record of how your thinking evolved on this project.</div></div>
+        </div>
+      </div>
+      <div class="chat-panel">
+        <div class="chh"><div><div class="chht">Ki</div><div class="chhs">project thinking partner</div></div><div class="cxb"><div class="cxd" style="background:var(--ray)"></div>18 captures</div></div>
+        <div class="chm"><div class="msg ma"><div class="bbl">You have 18 captures on the Airbnb project — the mango grove, what makes the space special, who the target guest is. Ready to craft your first context block to hand to a developer or designer?</div><div class="mt">Ki · ready</div></div></div>
+        <div class="chia">
+          <div class="chss"><button class="chs">craft developer context</button><button class="chs">write property description</button><button class="chs">what sections do I need?</button></div>
+          <div class="chw"><textarea class="chin" rows="1" placeholder="Talk to Ki..."></textarea><button class="sndbtn">↑</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPLORE -->
+  <div class="pg" id="pg-explore">
+    <div class="exl" style="height:100%">
+      <div class="exm">
+        <div style="margin-bottom:22px"><div style="font-family:var(--serif);font-size:20px;font-weight:300;margin-bottom:4px">Your mind, explored</div><div style="font-size:12px;color:var(--text3)">Patterns and connections across everything you have captured</div></div>
+        <div class="exc">
+          <div class="ext">Recurring themes</div><div class="exs">What your mind keeps returning to across all projects</div>
+          <div class="pg2">
+            <div class="pi"><div class="pl">mind extension</div><div class="pv">24 captures</div><div class="pb"><div class="pf2" style="width:95%"></div></div></div>
+            <div class="pi"><div class="pl">building systems</div><div class="pv">19 captures</div><div class="pb"><div class="pf2" style="width:76%"></div></div></div>
+            <div class="pi"><div class="pl">distillation</div><div class="pv">17 captures</div><div class="pb"><div class="pf2" style="width:68%;background:var(--ray)"></div></div></div>
+            <div class="pi"><div class="pl">pursuit of self</div><div class="pv">14 captures</div><div class="pb"><div class="pf2" style="width:56%;background:var(--pacific)"></div></div></div>
+            <div class="pi"><div class="pl">mastery</div><div class="pv">8 captures</div><div class="pb"><div class="pf2" style="width:32%;background:var(--sage)"></div></div></div>
+            <div class="pi"><div class="pl">clarity</div><div class="pv">7 captures</div><div class="pb"><div class="pf2" style="width:28%"></div></div></div>
+          </div>
+        </div>
+        <div class="exc">
+          <div class="ext">Questions you keep raising</div><div class="exs">Open questions surfaced across your captures</div>
+          <div class="qi">"Is the canvas the right primary interface for distillation, or is it supplementary?" <span style="font-size:10px;color:var(--text3);font-style:normal;margin-left:6px">6 captures</span></div>
+          <div class="qi" style="border-left-color:var(--ray)">"How does the handoff package get assembled and what format serves every downstream agent?" <span style="font-size:10px;color:var(--text3);font-style:normal;margin-left:6px">4 captures</span></div>
+          <div class="qi" style="border-left-color:var(--pacific)">"What is the right first cohort onboarding that doesn't sacrifice the personal touch?" <span style="font-size:10px;color:var(--text3);font-style:normal;margin-left:6px">3 captures</span></div>
+        </div>
+      </div>
+      <div class="chat-panel" style="width:350px">
+        <div class="chh"><div><div class="chht">Chat with Ki</div><div class="chhs">full corpus in context</div></div><div class="cxb"><div class="cxd"></div>247 captures</div></div>
+        <div class="chm"><div class="msg ma"><div class="bbl">Your full corpus is loaded — 247 captures across 3 projects. Ask me anything about what you have been thinking, what patterns I notice, or what you seem most uncertain about. I only know what you have given me.</div></div></div>
+        <div class="chia">
+          <div class="chss"><button class="chs">what am I most focused on?</button><button class="chs">what patterns do you see?</button><button class="chs">what am I avoiding?</button></div>
+          <div class="chw"><textarea class="chin" rows="1" placeholder="Ask Ki anything across all captures..."></textarea><button class="sndbtn">↑</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="pg" id="pg-profile">
+    <div class="prsc">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px">
+        <div style="width:50px;height:50px;border-radius:50%;background:var(--terra-dim);border:1px solid var(--terra);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:var(--terra)">R</div>
+        <div><div style="font-family:var(--serif);font-size:20px;font-weight:300">Ray Tomasetti</div><div style="font-size:12px;color:var(--text3)">build.ray.build@gmail.com · member since 2025</div></div>
+      </div>
+      <div style="font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Your Ki — memory document</div>
+      <div class="mmc"><div class="mmh"><div class="mmt">Who you are</div><div class="mme">edit</div></div><div class="mmb">You are a builder and explorer — someone who thinks through making things, both digital and physical. You went from a place of not believing in yourself to building systems and tools that help others do the same. You are in the pursuit of Self.</div></div>
+      <div class="mmc"><div class="mmh"><div class="mmt">What you're building toward</div><div class="mme">edit</div></div><div class="mmb">Ki — a personal intelligence system for builders. A coaching and personal brand practice. racheltomasetti.com as the hub. A first cohort of aligned, curious builders who become the founding community of Ki.</div></div>
+      <div class="mmc"><div class="mmh"><div class="mmt">What you're processing</div><div class="mme">edit</div></div><div class="mmb">How to go from scattered vision to shipped product. Whether the canvas is the right interface or a distraction. How to bring in the first cohort with intention and care.</div></div>
+      <div class="mmc"><div class="mmh"><div class="mmt">Your patterns</div><div class="mme">edit</div></div><div class="mmb">You think best by talking out loud — voice captures are where your clearest thinking happens. You tend to scope expansively then need to pull back to the concrete next step. Morning is your highest energy window.</div></div>
+      <div class="mmc"><div class="mmh"><div class="mmt">Recurring themes</div><div class="mme">edit</div></div><div class="mmb">Mind extension. Building systems. Distillation. Pursuit of self. The 0 to 1 philosophy. Mastery as a never-ending practice. The importance of clarity before execution.</div></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+var panels = {ki:true,ray:true,air:true};
+
+function go(id,el) {
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  document.querySelectorAll('.pni').forEach(n=>n.classList.remove('on'));
+  var pg = document.getElementById('pg-'+id);
+  if(pg) pg.classList.add('on');
+  if(el) el.classList.add('on');
+  var t={home:'Good morning, Ray',lib:'Library',explore:'Explore',profile:'Profile & Ki'};
+  document.getElementById('tbt').textContent = t[id]||id;
+}
+
+function gop(id,el) {
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  document.querySelectorAll('.pni').forEach(n=>n.classList.remove('on'));
+  var pg = document.getElementById('pg-'+id);
+  if(pg) pg.classList.add('on');
+  if(el) el.classList.add('on');
+  else {
+    document.querySelectorAll('.pni').forEach(n=>{
+      var t = n.textContent.trim();
+      if((id==='ki'&&t==='ki')||(id==='ray'&&t.includes('ray'))||(id==='air'&&t.includes('air')))
+        n.classList.add('on');
+    });
+  }
+  var names={ki:'ki',ray:'raybuilds021',air:'airbnb website'};
+  document.getElementById('tbt').textContent = names[id]||id;
+}
+
+function tcp(id) {
+  var p = document.getElementById('cpp-'+id);
+  var ob = document.getElementById('opn-'+id);
+  if(!p) return;
+  panels[id] = !panels[id];
+  if(panels[id]){p.classList.remove('closed');if(ob)ob.style.display='none';}
+  else{p.classList.add('closed');if(ob)ob.style.display='flex';}
+}
+
+function hlt(id) {
+  document.querySelectorAll('.cm').forEach(c=>c.classList.remove('lit'));
+  var el = document.getElementById(id);
+  if(el){
+    el.classList.add('lit');
+    el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    var refs = document.getElementById('refs-ki');
+    if(refs) refs.classList.add('show');
+    setTimeout(()=>el.classList.remove('lit'),3000);
+  }
+}
+
+function cpy(id) {
+  var ta = document.querySelector('#pg-'+id+' .cbta');
+  if(ta&&ta.value.trim()){
+    navigator.clipboard.writeText(ta.value).catch(()=>{});
+    var btn = document.getElementById('cpybtn-'+id)||document.querySelector('#pg-'+id+' .cpybtn');
+    if(btn){
+      btn.classList.add('ok');
+      btn.querySelector('span').textContent='copied!';
+      setTimeout(()=>{btn.classList.remove('ok');btn.querySelector('span').textContent='copy';},2000);
+    }
+  }
+}
+
+function clr() {
+  var ta = document.getElementById('cbt-ki');
+  if(ta) ta.value='';
+  var refs = document.getElementById('refs-ki');
+  if(refs) refs.classList.remove('show');
+  document.querySelectorAll('.cm').forEach(c=>c.classList.remove('lit'));
+}
+
+function addtoctx(btn) {
+  var prev = btn.closest('.sa').querySelector('.sap').textContent;
+  var ta = document.getElementById('cbt-ki');
+  if(ta) ta.value = ta.value.trim()+(ta.value.trim()?'\n\n':'')+prev;
+  btn.closest('.sa').innerHTML='<div style="color:var(--sage);font-size:11px">✓ added to context block</div>';
+  var refs = document.getElementById('refs-ki');
+  if(refs) refs.classList.add('show');
+}
+
+function snd(id) {
+  var inp = document.getElementById('chin-'+id);
+  var msgs = document.getElementById('chm-'+id);
+  if(!inp||!msgs||!inp.value.trim()) return;
+  var txt = inp.value.trim();
+  inp.value='';
+  var um = document.createElement('div');
+  um.className='msg mu';
+  um.innerHTML='<div class="bbl">'+txt+'</div><div class="mt">you · just now</div>';
+  msgs.appendChild(um);
+  setTimeout(()=>{
+    var am = document.createElement('div');
+    am.className='msg ma';
+    am.innerHTML='<div class="bbl">Got it. Looking through your captures for the most relevant context...<br><br>Based on what you have captured, I would add this to the context block: the specific technical detail, the decision that led here, and the constraint to keep in mind.</div><div class="ccs"><span class="cc" onclick="hlt(\'c1\')">📍 Ki build session</span><span class="cc" onclick="hlt(\'c4\')">📍 web first realization</span></div><div class="mt">Ki · just now</div>';
+    msgs.appendChild(am);
+    msgs.scrollTop = msgs.scrollHeight;
+  },1100);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function sug(btn) {
+  var inp = document.getElementById('chin-ki');
+  if(inp){inp.value=btn.textContent;inp.focus();}
+}
+
+function seltp(el) {
+  el.closest('.tps').querySelectorAll('.tp').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function sf(el) {
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+}
+
+document.querySelectorAll('.chin').forEach(el=>{
+  el.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();snd('ki');}
+  });
+});
+</script>
+</body>
+</html>
