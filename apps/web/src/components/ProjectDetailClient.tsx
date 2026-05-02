@@ -1,7 +1,26 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { addProjectMessage } from '@ki/services'
 import type { Project, CaptureWithEnrichment, ProjectConversation } from '@ki/types'
+
+// ─── Markdown renderer (paragraphs + bold, no dependency) ────────────────────
+
+function renderMarkdown(text: string): React.ReactNode {
+  return text.split('\n\n').map((para, i) => {
+    const parts = para.split(/(\*\*[^*]+\*\*)/)
+    return (
+      <p key={i} className="mb-2 last:mb-0 whitespace-pre-wrap">
+        {parts.map((part, j) =>
+          part.startsWith('**') && part.endsWith('**')
+            ? <strong key={j}>{part.slice(2, -2)}</strong>
+            : part
+        )}
+      </p>
+    )
+  })
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,12 +37,6 @@ function relativeTime(dateStr: string): string {
   if (diffDays === 1) return 'yesterday'
   if (diffDays < 7) return `${diffDays}d ago`
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function fullTimestamp(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-  })
 }
 
 // ─── Left panel: Captures ─────────────────────────────────────────────────────
@@ -48,7 +61,6 @@ function CapturesPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Panel header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
         <span className="font-sans text-xs font-medium text-charcoal/60 dark:text-[#9e9b96]">
           Captures
@@ -56,7 +68,6 @@ function CapturesPanel({
         </span>
       </div>
 
-      {/* Search */}
       <div className="px-3 py-2 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
         <input
           value={search}
@@ -66,7 +77,6 @@ function CapturesPanel({
         />
       </div>
 
-      {/* Capture list */}
       <div className="flex-1 overflow-y-auto py-2 px-2">
         {filtered.length === 0 ? (
           <p className="font-sans text-xs text-charcoal/35 dark:text-[#5c5a57] text-center py-10 px-4 leading-relaxed">
@@ -111,7 +121,7 @@ function CapturesPanel({
   )
 }
 
-// ─── Center top: Thought distiller ───────────────────────────────────────────
+// ─── Center: Thought distiller ────────────────────────────────────────────────
 
 function ThoughtDistiller({
   content,
@@ -119,31 +129,23 @@ function ThoughtDistiller({
   onCopy,
   onSave,
   copied,
-  refCaptures,
-  onOpenPanel,
+  saving,
   panelOpen,
+  onOpenPanel,
 }: {
   content: string
   onChange: (v: string) => void
   onCopy: () => void
   onSave: () => void
   copied: boolean
-  refCaptures: CaptureWithEnrichment[]
-  onOpenPanel: () => void
+  saving: boolean
   panelOpen: boolean
+  onOpenPanel: () => void
 }) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value)
-    e.target.style.height = 'auto'
-    e.target.style.height = `${Math.min(e.target.scrollHeight, 240)}px`
-  }
-
   return (
-    <div className="flex-shrink-0 border-b border-charcoal/8 dark:border-white/7 px-5 py-4 bg-cream dark:bg-[#0f0e0e]">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
         <div className="flex items-center gap-2">
           {!panelOpen && (
             <button
@@ -158,65 +160,30 @@ function ThoughtDistiller({
             Thought distiller
           </span>
         </div>
-        <button
-          onClick={() => onChange('')}
-          className="font-sans text-xs text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors px-2 py-1 rounded border border-charcoal/10 dark:border-white/7 hover:border-charcoal/20 dark:hover:border-white/13"
-        >
-          clear
-        </button>
-      </div>
-
-      {/* Referenced capture chips */}
-      {refCaptures.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {refCaptures.map(c => (
-            <span
-              key={c.id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-sans bg-terra/10 text-terra border border-terra/25"
-            >
-              <span className="w-1 h-1 rounded-full bg-terra flex-shrink-0" />
-              {c.title ?? c.body?.slice(0, 32) ?? 'capture'}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Textarea */}
-      <textarea
-        ref={textareaRef}
-        value={content}
-        onChange={handleChange}
-        placeholder="Talk to Ki in the chat → Ki will help you shape a distilled thought from your captures. When it feels right, save it or copy it."
-        rows={4}
-        className="w-full bg-charcoal/[0.04] dark:bg-white/[0.05] border border-charcoal/8 dark:border-white/7 rounded-lg px-4 py-3 font-serif text-sm text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/25 dark:placeholder:text-[#5c5a57] placeholder:italic resize-none outline-none focus:border-charcoal/20 dark:focus:border-white/13 leading-relaxed transition-colors"
-        style={{ minHeight: '96px', maxHeight: '240px' }}
-      />
-
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-2.5">
-        <span className="font-sans text-[10px] italic text-charcoal/30 dark:text-[#5c5a57]">
-          {refCaptures.length > 0
-            ? `Ki shaped this from ${refCaptures.length} capture${refCaptures.length !== 1 ? 's' : ''}`
-            : 'empty — start a conversation with Ki →'}
-        </span>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => onChange('')}
+            className="font-sans text-xs text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors px-2 py-1 rounded border border-charcoal/10 dark:border-white/7 hover:border-charcoal/20 dark:hover:border-white/13"
+          >
+            clear
+          </button>
+          <button
             onClick={onSave}
-            disabled={!content.trim()}
+            disabled={!content.trim() || saving}
             className={[
-              'font-sans text-xs font-medium px-3 py-1.5 rounded-lg border transition-all',
-              content.trim()
+              'font-sans text-xs font-medium px-3 py-1 rounded-lg border transition-all',
+              content.trim() && !saving
                 ? 'border-charcoal/20 dark:border-white/13 text-charcoal/60 dark:text-[#9e9b96] hover:border-charcoal/35 dark:hover:border-white/20 hover:text-charcoal dark:hover:text-[#f0ede8]'
                 : 'border-charcoal/8 dark:border-white/5 text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
             ].join(' ')}
           >
-            save to Ki
+            {saving ? 'saving…' : 'save to Ki'}
           </button>
           <button
             onClick={onCopy}
             disabled={!content.trim()}
             className={[
-              'flex items-center gap-1.5 font-sans text-xs font-semibold px-4 py-1.5 rounded-lg transition-all',
+              'flex items-center gap-1.5 font-sans text-xs font-semibold px-4 py-1 rounded-lg transition-all',
               content.trim()
                 ? copied
                   ? 'bg-sage text-cream'
@@ -228,62 +195,16 @@ function ThoughtDistiller({
           </button>
         </div>
       </div>
-    </div>
-  )
-}
 
-// ─── Center bottom: Output history ───────────────────────────────────────────
-
-function OutputHistory({ distilled }: { distilled: CaptureWithEnrichment[] }) {
-  return (
-    <div className="flex-1 overflow-y-auto px-5 py-5">
-      <div className="flex items-center justify-between mb-5">
-        <span className="font-sans text-[10px] font-semibold text-charcoal/35 dark:text-[#5c5a57] uppercase tracking-widest">
-          Output history
-        </span>
-        <span className="font-sans text-[10px] text-charcoal/25 dark:text-[#5c5a57]">
-          every save recorded automatically
-        </span>
+      {/* Textarea — fills remaining space */}
+      <div className="flex-1 px-5 py-4 overflow-hidden">
+        <textarea
+          value={content}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Ki will help shape your thinking here as you converse. You can also write directly — edit, refine, build on it together."
+          className="w-full h-full bg-transparent border-none outline-none font-serif text-sm text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/25 dark:placeholder:text-[#5c5a57] placeholder:italic resize-none leading-relaxed"
+        />
       </div>
-
-      {distilled.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="font-serif text-base font-light text-charcoal/45 dark:text-[#9e9b96] mb-2">
-            No outputs yet
-          </p>
-          <p className="font-sans text-xs text-charcoal/30 dark:text-[#5c5a57] leading-relaxed max-w-xs mx-auto">
-            Talk to Ki, shape a distilled thought, save it here. Every save builds the record of how your thinking evolved on this project.
-          </p>
-        </div>
-      ) : (
-        <div className="relative">
-          {distilled.map((c, i) => (
-            <div key={c.id} className="relative pl-5 mb-5">
-              {/* Timeline line */}
-              {i < distilled.length - 1 && (
-                <div className="absolute left-[5px] top-3 bottom-[-20px] w-px bg-charcoal/10 dark:bg-white/7" />
-              )}
-              {/* Dot */}
-              <div className="absolute left-0 top-[5px] w-[11px] h-[11px] rounded-full bg-charcoal/8 dark:bg-white/8 border border-charcoal/20 dark:border-white/13 flex items-center justify-center">
-                <div className="w-[5px] h-[5px] rounded-full bg-terra" />
-              </div>
-              {/* Timestamp */}
-              <p className="font-sans text-[10px] text-charcoal/35 dark:text-[#5c5a57] mb-1.5">
-                {fullTimestamp(c.captured_at)} · saved to Ki
-              </p>
-              {/* Content block */}
-              <div className="bg-charcoal/[0.04] dark:bg-white/[0.04] border border-charcoal/8 dark:border-white/7 rounded-lg px-4 py-3 font-serif text-xs font-light text-charcoal/70 dark:text-[#9e9b96] leading-relaxed cursor-pointer hover:border-charcoal/15 dark:hover:border-white/13 transition-colors">
-                {c.title && (
-                  <p className="font-sans text-xs font-medium text-charcoal/60 dark:text-[#9e9b96] mb-1.5 not-italic">
-                    {c.title}
-                  </p>
-                )}
-                <p className="line-clamp-4 italic">{c.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -293,10 +214,12 @@ function OutputHistory({ distilled }: { distilled: CaptureWithEnrichment[] }) {
 function ChatPanel({
   captureCount,
   messages,
+  isThinking,
   onSendMessage,
 }: {
   captureCount: number
   messages: ProjectConversation[]
+  isThinking: boolean
   onSendMessage: (content: string) => void
 }) {
   const [input, setInput] = useState('')
@@ -305,16 +228,14 @@ function ChatPanel({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, isThinking])
 
   const send = () => {
     const trimmed = input.trim()
-    if (!trimmed) return
+    if (!trimmed || isThinking) return
     onSendMessage(trimmed)
     setInput('')
-    if (inputRef.current) {
-      inputRef.current.style.height = 'auto'
-    }
+    if (inputRef.current) inputRef.current.style.height = 'auto'
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -331,10 +252,10 @@ function ChatPanel({
   }
 
   const suggestions = [
-    'refine my thinking',
+    'what are the key themes here?',
     "what am I missing?",
-    'shape a distilled thought',
-    'most relevant captures?',
+    'help me distill this',
+    'what questions keep coming up?',
   ]
 
   return (
@@ -343,7 +264,7 @@ function ChatPanel({
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
         <div>
           <p className="font-sans text-sm font-medium text-charcoal dark:text-[#f0ede8]">Ki</p>
-          <p className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] mt-0.5">project thinking partner</p>
+          <p className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] mt-0.5">thinking partner</p>
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-charcoal/5 dark:bg-white/5 border border-charcoal/8 dark:border-white/7">
           <div className="w-1.5 h-1.5 rounded-full bg-sage flex-shrink-0" />
@@ -353,42 +274,57 @@ function ChatPanel({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2.5">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !isThinking ? (
           <div className="flex-1 flex items-center justify-center px-4">
             <div className="max-w-[220px] text-center">
-              <p className="font-serif text-sm font-light text-charcoal/50 dark:text-[#9e9b96] leading-relaxed italic mb-2">
+              <p className="font-serif text-sm font-light text-charcoal/50 dark:text-[#9e9b96] leading-relaxed italic">
                 {captureCount > 0
-                  ? `${captureCount} capture${captureCount !== 1 ? 's' : ''} in this project. Ask me anything.`
-                  : 'No captures yet. Add some on mobile, then come back here to distill your thinking.'}
+                  ? `${captureCount} capture${captureCount !== 1 ? 's' : ''} in context. Ask me anything.`
+                  : 'No captures yet. Add some on mobile, then come back to distill your thinking.'}
               </p>
             </div>
           </div>
         ) : (
-          messages.map(msg => (
-            <div
-              key={msg.id}
-              className={['flex flex-col', msg.role === 'user' ? 'items-end' : 'items-start'].join(' ')}
-            >
-              <div className={[
-                'max-w-[85%] px-3 py-2.5 rounded-xl font-sans text-xs leading-relaxed',
-                msg.role === 'user'
-                  ? 'bg-terra text-cream rounded-br-sm'
-                  : 'bg-charcoal/[0.06] dark:bg-white/[0.06] border border-charcoal/8 dark:border-white/7 text-charcoal dark:text-[#f0ede8] rounded-bl-sm',
-              ].join(' ')}>
-                {msg.content}
+          <>
+            {messages.map(msg => (
+              <div
+                key={msg.id}
+                className={['flex flex-col', msg.role === 'user' ? 'items-end' : 'items-start'].join(' ')}
+              >
+                <div className={[
+                  'max-w-[85%] px-3 py-2.5 rounded-xl font-sans text-xs leading-relaxed',
+                  msg.role === 'user'
+                    ? 'bg-terra text-cream rounded-br-sm'
+                    : 'bg-charcoal/[0.06] dark:bg-white/[0.06] border border-charcoal/8 dark:border-white/7 text-charcoal dark:text-[#f0ede8] rounded-bl-sm',
+                ].join(' ')}>
+                  {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+                </div>
+                <span className="font-sans text-[9px] text-charcoal/25 dark:text-[#5c5a57] mt-1 px-1">
+                  {msg.role === 'user' ? 'you' : 'Ki'} · {relativeTime(msg.created_at)}
+                </span>
               </div>
-              <span className="font-sans text-[9px] text-charcoal/25 dark:text-[#5c5a57] mt-1 px-1">
-                {msg.role === 'user' ? 'you' : 'Ki'} · {relativeTime(msg.created_at)}
-              </span>
-            </div>
-          ))
+            ))}
+
+            {/* Thinking indicator */}
+            {isThinking && (
+              <div className="flex flex-col items-start">
+                <div className="px-3 py-2.5 rounded-xl rounded-bl-sm bg-charcoal/[0.06] dark:bg-white/[0.06] border border-charcoal/8 dark:border-white/7">
+                  <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-charcoal/30 dark:bg-white/30 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-charcoal/30 dark:bg-white/30 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-charcoal/30 dark:bg-white/30 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+                <span className="font-sans text-[9px] text-charcoal/25 dark:text-[#5c5a57] mt-1 px-1">Ki · thinking</span>
+              </div>
+            )}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input area */}
       <div className="flex-shrink-0 px-3 pb-3 border-t border-charcoal/8 dark:border-white/7 pt-3">
-        {/* Suggestion chips */}
         <div className="flex flex-wrap gap-1.5 mb-2.5">
           {suggestions.map(s => (
             <button
@@ -401,7 +337,6 @@ function ChatPanel({
           ))}
         </div>
 
-        {/* Input */}
         <div className="flex items-end gap-2 bg-charcoal/[0.04] dark:bg-white/[0.05] border border-charcoal/10 dark:border-white/8 rounded-xl px-3 py-2 focus-within:border-charcoal/20 dark:focus-within:border-white/15 transition-colors">
           <textarea
             ref={inputRef}
@@ -410,15 +345,16 @@ function ChatPanel({
             onKeyDown={handleKeyDown}
             placeholder="Talk to Ki about this project…"
             rows={1}
-            className="flex-1 bg-transparent border-none outline-none font-sans text-xs text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic resize-none leading-relaxed"
+            disabled={isThinking}
+            className="flex-1 bg-transparent border-none outline-none font-sans text-xs text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic resize-none leading-relaxed disabled:opacity-50"
             style={{ minHeight: '20px', maxHeight: '112px' }}
           />
           <button
             onClick={send}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isThinking}
             className={[
               'flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-all mb-0.5',
-              input.trim()
+              input.trim() && !isThinking
                 ? 'bg-terra text-cream hover:bg-terra/90'
                 : 'bg-charcoal/8 dark:bg-white/8 text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
             ].join(' ')}
@@ -441,16 +377,18 @@ interface Props {
   messages: ProjectConversation[]
 }
 
-export function ProjectDetailClient({ captures, messages }: Props) {
+export function ProjectDetailClient({ project, captures, messages: initialMessages }: Props) {
+  const supabase = createClient()
+
   const [panelOpen, setPanelOpen] = useState(true)
   const [distillerContent, setDistillerContent] = useState('')
   const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [isThinking, setIsThinking] = useState(false)
+  const [messages, setMessages] = useState<ProjectConversation[]>(initialMessages)
   const [highlightedCaptureId, setHighlightedCaptureId] = useState<string | null>(null)
 
   const rawCaptures = captures.filter(c => c.source_type !== 'distilled')
-  const distilledCaptures = captures
-    .filter(c => c.source_type === 'distilled')
-    .sort((a, b) => new Date(b.captured_at).getTime() - new Date(a.captured_at).getTime())
 
   const handleCopy = async () => {
     if (!distillerContent.trim()) return
@@ -459,15 +397,126 @@ export function ProjectDetailClient({ captures, messages }: Props) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleSave = () => {
-    // Checkpoint 4 — opens title modal and creates distilled capture
-    // Wired up in the next build round
+  const handleSave = async () => {
+    if (!distillerContent.trim() || saving) return
+    setSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: capture, error } = await supabase
+        .from('captures')
+        .insert({
+          user_id: user.id,
+          type: 'text',
+          source_type: 'distilled',
+          enrichment_profile: 'distilled',
+          body: distillerContent.trim(),
+          source_metadata: {
+            project_id: project.id,
+            distilled_at: new Date().toISOString(),
+          },
+        })
+        .select()
+        .single()
+
+      if (error || !capture) throw error
+
+      // Tag it to this project
+      await supabase
+        .from('capture_projects')
+        .insert({ capture_id: capture.id, project_id: project.id, user_id: user.id })
+
+      setDistillerContent('')
+    } catch (err) {
+      console.error('save to Ki error:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleSendMessage = (content: string) => {
-    // Checkpoint 2 — persists to project_conversations
-    // Checkpoint 3 — triggers project-agent edge function
-    console.log('send:', content)
+  const handleSendMessage = async (content: string) => {
+    if (isThinking) return
+    setIsThinking(true)
+
+    // Optimistic user message — temp ID so it renders immediately
+    const tempUserMsg: ProjectConversation = {
+      id: `temp-user-${Date.now()}`,
+      project_id: project.id,
+      user_id: '',
+      role: 'user',
+      content,
+      created_at: new Date().toISOString(),
+    }
+    setMessages(prev => [...prev, tempUserMsg])
+
+    try {
+      // Build conversation history for the agent (exclude the temp message)
+      const history = messages.map(m => ({ role: m.role, content: m.content }))
+
+      const { data, error: fnError } = await supabase.functions.invoke('project-agent', {
+        body: {
+          project_id: project.id,
+          message: content,
+          conversation_history: history,
+        },
+      })
+
+      if (fnError) throw fnError
+
+      const agentData = data as {
+        response: string
+        distilled_text?: string
+        citations?: Array<{ id: string; title: string | null; captured_at: string }>
+      }
+
+      const kiResponse = agentData.response ?? 'Something went wrong. Please try again.'
+
+      // Populate thought distiller if Ki proposed a distillation
+      if (agentData.distilled_text?.trim()) {
+        setDistillerContent(agentData.distilled_text.trim())
+      }
+
+      // Persist both messages to DB (fire and update local state with real IDs)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const [savedUser, savedKi] = await Promise.all([
+          addProjectMessage(supabase, project.id, user.id, 'user', content),
+          addProjectMessage(supabase, project.id, user.id, 'assistant', kiResponse),
+        ])
+
+        // Replace temp message + add Ki response with real DB rows
+        setMessages(prev => [
+          ...prev.filter(m => m.id !== tempUserMsg.id),
+          savedUser,
+          savedKi,
+        ])
+      } else {
+        // No user — still show Ki response in UI
+        const tempKiMsg: ProjectConversation = {
+          id: `temp-ki-${Date.now()}`,
+          project_id: project.id,
+          user_id: '',
+          role: 'assistant',
+          content: kiResponse,
+          created_at: new Date().toISOString(),
+        }
+        setMessages(prev => [...prev, tempKiMsg])
+      }
+
+      // Highlight referenced captures briefly
+      if (agentData.citations?.length) {
+        setHighlightedCaptureId(agentData.citations[0].id)
+        setTimeout(() => setHighlightedCaptureId(null), 2000)
+      }
+
+    } catch (err) {
+      console.error('project-agent error:', err)
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id))
+    } finally {
+      setIsThinking(false)
+    }
   }
 
   const handleHighlight = (captureId: string) => {
@@ -486,7 +535,6 @@ export function ProjectDetailClient({ captures, messages }: Props) {
         ].join(' ')}
       >
         <div className="w-[260px] h-full flex flex-col relative">
-          {/* Collapse toggle */}
           <button
             onClick={() => setPanelOpen(false)}
             className="absolute top-3 right-3 z-10 flex items-center justify-center w-5 h-5 rounded border border-charcoal/12 dark:border-white/8 text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors text-[10px]"
@@ -502,7 +550,7 @@ export function ProjectDetailClient({ captures, messages }: Props) {
         </div>
       </div>
 
-      {/* CENTER */}
+      {/* CENTER: Thought distiller */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-cream dark:bg-[#0f0e0e]">
         <ThoughtDistiller
           content={distillerContent}
@@ -510,11 +558,10 @@ export function ProjectDetailClient({ captures, messages }: Props) {
           onCopy={handleCopy}
           onSave={handleSave}
           copied={copied}
-          refCaptures={[]}
-          onOpenPanel={() => setPanelOpen(true)}
+          saving={saving}
           panelOpen={panelOpen}
+          onOpenPanel={() => setPanelOpen(true)}
         />
-        <OutputHistory distilled={distilledCaptures} />
       </div>
 
       {/* RIGHT: Ki chat */}
@@ -522,6 +569,7 @@ export function ProjectDetailClient({ captures, messages }: Props) {
         <ChatPanel
           captureCount={rawCaptures.length}
           messages={messages}
+          isThinking={isThinking}
           onSendMessage={handleSendMessage}
         />
       </div>

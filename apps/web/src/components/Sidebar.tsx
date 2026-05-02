@@ -2,6 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { GoHome } from 'react-icons/go'
+import { LuLibrary } from 'react-icons/lu'
+import { IoCompassOutline } from 'react-icons/io5'
 import type { Project, Profile } from '@ki/types'
 
 interface SidebarProps {
@@ -10,10 +13,10 @@ interface SidebarProps {
   userEmail: string | null
 }
 
-const NAV: { href: string; label: string; icon: string }[] = [
-  { href: '/home', label: 'Home', icon: '⌂' },
-  { href: '/library', label: 'Library', icon: '▤' },
-  { href: '/explore', label: 'Explore', icon: '◎' },
+const NAV: { href: string; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
+  { href: '/home', label: 'Home', Icon: GoHome },
+  { href: '/library', label: 'Library', Icon: LuLibrary },
+  { href: '/explore', label: 'Explore', Icon: IoCompassOutline },
 ]
 
 export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
@@ -35,7 +38,7 @@ export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-[10px]">
 
-        {NAV.map(({ href, label, icon }) => {
+        {NAV.map(({ href, label, Icon }) => {
           const active = href === '/home'
             ? pathname === '/home' || pathname === '/'
             : pathname.startsWith(href)
@@ -50,8 +53,8 @@ export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
                   : 'text-charcoal/50 dark:text-[#9e9b96] border-transparent hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
               ].join(' ')}
             >
-              <span className={['w-[14px] text-center text-[13px]', active ? '' : 'opacity-70'].join(' ')}>
-                {icon}
+              <span className={['w-[14px] flex justify-center', active ? '' : 'opacity-70'].join(' ')}>
+                <Icon className="text-[14px]" />
               </span>
               {label}
             </Link>
