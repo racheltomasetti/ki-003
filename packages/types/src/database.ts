@@ -607,6 +607,7 @@ export type Database = {
           name: string
           open_question: string | null
           project_mode: string | null
+          status: string
           success_looks_like: string | null
           updated_at: string
           user_id: string
@@ -621,6 +622,7 @@ export type Database = {
           name: string
           open_question?: string | null
           project_mode?: string | null
+          status?: string
           success_looks_like?: string | null
           updated_at?: string
           user_id: string
@@ -635,6 +637,7 @@ export type Database = {
           name?: string
           open_question?: string | null
           project_mode?: string | null
+          status?: string
           success_looks_like?: string | null
           updated_at?: string
           user_id?: string

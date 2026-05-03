@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
+import { IoMdSettings } from 'react-icons/io'
 import { createClient } from '@/lib/supabase/client'
 import { addProjectMessage } from '@ki/services'
 import type { Project, CaptureWithEnrichment, ProjectConversation } from '@ki/types'
@@ -377,6 +379,20 @@ interface Props {
   messages: ProjectConversation[]
 }
 
+const MODE_COLORS: Record<string, string> = {
+  building: '#9e2a2b',
+  creating: '#efcb68',
+  researching: '#58a4b0',
+  figuring_out: '#67934d',
+}
+
+const MODE_LABELS: Record<string, string> = {
+  building: 'building',
+  creating: 'creating',
+  researching: 'researching',
+  figuring_out: 'figuring out',
+}
+
 export function ProjectDetailClient({ project, captures, messages: initialMessages }: Props) {
   const supabase = createClient()
 
@@ -524,8 +540,38 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
     setTimeout(() => setHighlightedCaptureId(null), 2000)
   }
 
+  const color = project.color ?? '#9e9b96'
+  const mode = project.project_mode
+  const modeColor = mode ? MODE_COLORS[mode] : null
+  const modeLabel = mode ? MODE_LABELS[mode] : null
+
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
+
+      {/* Project header */}
+      <div className="flex items-center justify-between px-5 py-[10px] border-b border-charcoal/8 dark:border-white/7 shrink-0 bg-cream dark:bg-[#161514]">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+          <span className="font-serif text-[15px] font-medium text-charcoal dark:text-[#f0ede8] truncate">{project.name}</span>
+          {modeLabel && modeColor && (
+            <span
+              className="text-[9px] font-medium px-2 py-[2px] rounded-full uppercase tracking-[0.06em] shrink-0"
+              style={{ background: `${modeColor}20`, color: modeColor }}
+            >
+              {modeLabel}
+            </span>
+          )}
+        </div>
+        <Link
+          href={`/projects/${project.id}/settings`}
+          className="flex items-center justify-center shrink-0 p-1 -m-1 text-charcoal/40 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] transition-colors"
+          aria-label="Project settings"
+        >
+          <IoMdSettings className="size-[18px]" aria-hidden />
+        </Link>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
 
       {/* LEFT: Captures panel */}
       <div
@@ -574,6 +620,7 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
         />
       </div>
 
+      </div>{/* end panels row */}
     </div>
   )
 }

@@ -1,32 +1,38 @@
+import type { ComponentType } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { getProjects } from '@ki/services'
+import { getProjects, getCaptureCounts, getCaptures } from '@ki/services'
 import Link from 'next/link'
-import type { Project } from '@ki/types'
+import { MdKeyboardVoice } from 'react-icons/md'
+import { FaPencil } from 'react-icons/fa6'
+import { IoAttach } from 'react-icons/io5'
+import { QuickCapture } from '@/components/QuickCapture'
+import type { Project, CaptureWithEnrichment } from '@ki/types'
+
+// ─── Stat card ────────────────────────────────────────────────────────────────
 
 function StatCard({
   label,
   value,
-  sub,
   valueColor,
 }: {
   label: string
-  value: string
-  sub: string
+  value: string | number
   valueColor?: string
 }) {
   return (
     <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-[18px] py-4">
-      <div className="text-[10px] font-medium text-charcoal/40 dark:text-[#5c5a57] uppercase tracking-[0.08em] mb-2">{label}</div>
+      <div className="text-[10px] font-medium text-charcoal/40 dark:text-[#5c5a57] uppercase tracking-[0.08em] mb-4">{label}</div>
       <div
-        className="font-serif text-[28px] font-light leading-none text-charcoal dark:text-[#f0ede8]"
+        className="font-serif text-[28px] font-light leading-none text-charcoal dark:text-[#f0ede8] mb-2"
         style={valueColor ? { color: valueColor } : {}}
       >
         {value}
       </div>
-      <div className="text-[11px] text-charcoal/35 dark:text-[#5c5a57] mt-[5px]">{sub}</div>
     </div>
   )
 }
+
+// ─── Project card ─────────────────────────────────────────────────────────────
 
 const MODE_COLORS: Record<string, string> = {
   building: '#9e2a2b',
@@ -67,152 +73,166 @@ function ProjectCard({ project }: { project: Project }) {
       </div>
       {(project.description || project.what) && (
         <p className="font-serif text-[12px] font-light italic text-charcoal/50 dark:text-[#9e9b96] leading-relaxed line-clamp-2 ml-[14px]">
-          {project.description ?? `"${project.what}"`}
+          {project.description ?? project.what}
         </p>
       )}
     </Link>
   )
 }
 
-const STREAK_DAYS = Array.from({ length: 14 }, (_, i) => i < 13)
+// ─── Recent captures feed ─────────────────────────────────────────────────────
+
+function relativeTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  const diffHrs = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  if (diffMin < 1) return 'just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  if (diffHrs < 24) return `${diffHrs}h ago`
+  if (diffDays === 1) return 'yesterday'
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const SOURCE_ICONS: Record<string, ComponentType<{ className?: string }>> = {
+  voice: MdKeyboardVoice,
+  text: FaPencil,
+  file: IoAttach,
+  file_attached: IoAttach,
+  manual: FaPencil,
+}
+
+function RecentCaptures({ captures }: { captures: CaptureWithEnrichment[] }) {
+  if (captures.length === 0) {
+    return (
+      <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-[18px] py-8 text-center">
+        <p className="font-serif text-[13px] font-light italic text-charcoal/35 dark:text-[#5c5a57]">
+          No captures yet. Record a thought on mobile or use quick capture above.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] overflow-hidden">
+      {captures.map((c, i) => {
+        const label = c.title ?? c.body?.slice(0, 80) ?? 'Untitled'
+        const Icon = SOURCE_ICONS[c.source_type] ?? SOURCE_ICONS[c.type] ?? FaPencil
+        const isDistilled = c.source_type === 'distilled'
+        const summary = c.enrichments?.summary
+
+        return (
+          <div
+            key={c.id}
+            className={[
+              'flex items-start gap-3 px-4 py-[11px]',
+              i < captures.length - 1 ? 'border-b border-charcoal/5 dark:border-white/[0.05]' : '',
+            ].join(' ')}
+          >
+            <div className="w-7 h-7 rounded-[8px] flex items-center justify-center text-[13px] shrink-0 bg-charcoal/5 dark:bg-white/[0.05] mt-[1px]">
+              {isDistilled ? '◈' : <Icon className="text-[14px]" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12.5px] font-medium text-charcoal dark:text-[#f0ede8] truncate leading-snug">
+                {label}
+              </p>
+              {summary && (
+                <p className="font-serif text-[11px] font-light italic text-charcoal/45 dark:text-[#5c5a57] mt-[2px] line-clamp-1">
+                  {summary}
+                </p>
+              )}
+            </div>
+            <div className="text-[10px] text-charcoal/30 dark:text-[#5c5a57] shrink-0 mt-[2px]">
+              {relativeTime(c.captured_at)}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: projects } = await getProjects(supabase, user.id)
+  const [
+    { data: projects },
+    counts,
+    { data: recentRows },
+  ] = await Promise.all([
+    getProjects(supabase, user.id),
+    getCaptureCounts(supabase, user.id),
+    getCaptures(supabase, { status: 'active', limit: 8 }),
+  ])
+
   const projectList = (projects ?? []) as Project[]
+  const recentCaptures = (recentRows ?? []) as CaptureWithEnrichment[]
 
   return (
     <div className="flex-1 h-full overflow-y-auto">
-      <div className="px-6 py-6 max-w-[900px] mx-auto">
+      <div className="px-6 py-6 max-w-[1120px] mx-auto">
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
-          <StatCard label="Total captures" value="—" sub="loading..." />
-          <StatCard label="Capture streak" value="0" sub="days" valueColor="#9e2a2b" />
-          <StatCard label="Active projects" value={String(projectList.length)} sub="in progress" />
-          <StatCard label="Enriched" value="—" sub="loading..." valueColor="#efcb68" />
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          <StatCard label="Total captures" value={counts.total} />
+          <StatCard label="Active projects" value={projectList.length} />
+          <StatCard label="Distilled thoughts" value={counts.distilled} />
         </div>
 
-        {/* Quick capture */}
-        <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 py-[18px] mb-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-[12px] font-medium text-charcoal/55 dark:text-[#9e9b96]">Quick capture</div>
-            <div className="flex items-center gap-[6px] text-[11px] text-charcoal/35 dark:text-[#5c5a57] px-[10px] py-1 border border-charcoal/8 dark:border-white/[0.07] rounded-full bg-charcoal/[0.03] dark:bg-[#1d1b1a] cursor-pointer select-none">
-              <span className="w-[6px] h-[6px] rounded-full bg-terra" />
-              no project
-              <span className="text-[9px]">▾</span>
-            </div>
-          </div>
-          <textarea
-            className="w-full bg-charcoal/5 dark:bg-[#1d1b1a] border border-charcoal/8 dark:border-white/[0.07] rounded-[10px] px-[14px] py-3 text-[13px] text-charcoal dark:text-[#f0ede8] font-serif font-light resize-none min-h-[70px] leading-relaxed outline-none focus:border-charcoal/20 dark:focus:border-white/[0.13] transition-colors placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic"
-            placeholder="What's on your mind..."
-          />
-          <div className="flex items-center justify-between mt-[10px]">
-            <div className="flex gap-1">
-              {['✎ text', '🎙 voice', '📎 file'].map((label, i) => (
-                <button
-                  key={label}
-                  className={[
-                    'px-3 py-1 rounded-full text-[11px] border cursor-pointer transition-all',
-                    i === 0
-                      ? 'border-terra text-terra bg-terra/10'
-                      : 'border-charcoal/8 dark:border-white/[0.07] text-charcoal/35 dark:text-[#5c5a57] bg-transparent hover:border-charcoal/15 dark:hover:border-white/[0.13] hover:text-charcoal/60 dark:hover:text-[#9e9b96]',
-                  ].join(' ')}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <button className="px-3 py-[4px] text-[12px] font-medium rounded-[10px] bg-terra text-white cursor-pointer hover:bg-[#b83333] transition-colors">
-              capture
-            </button>
-          </div>
-        </div>
-
-        {/* Projects + recent activity */}
-        <div className="grid grid-cols-[1fr_300px] gap-4 mb-4">
-
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">Projects</div>
-              <Link href="/projects" className="text-[11px] text-terra">view all →</Link>
-            </div>
-            <div className="space-y-2">
-              {projectList.slice(0, 3).map((p) => (
-                <ProjectCard key={p.id} project={p} />
-              ))}
-              {projectList.length === 0 && (
-                <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-[18px] py-8 text-center">
-                  <p className="font-serif text-[13px] font-light italic text-charcoal/35 dark:text-[#5c5a57]">No projects yet.</p>
-                  <Link href="/projects/new" className="inline-block mt-3 text-[12px] text-terra hover:text-[#b83333] transition-colors">
-                    + create your first project
-                  </Link>
-                </div>
-              )}
-            </div>
+        {/* Quick capture + Projects — equal height columns on md+ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 md:items-stretch">
+          <div className="min-w-0 flex flex-col h-full min-h-0">
+            <QuickCapture projects={projectList} userId={user.id} />
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">Recent activity</div>
-              <Link href="/library" className="text-[11px] text-terra">library →</Link>
-            </div>
-            <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-[11px]">
-                <div className="w-7 h-7 rounded-[10px] flex items-center justify-center text-[12px] shrink-0 bg-pacific/10">
-                  ▤
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] text-charcoal/55 dark:text-[#9e9b96]">Your captures appear here</div>
-                  <div className="text-[10px] text-charcoal/35 dark:text-[#5c5a57] mt-[1px]">as you build your corpus</div>
-                </div>
+          <div className="min-w-0 h-full min-h-0 flex flex-col bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 pt-4 pb-[14px]">
+            <div className="mb-3 shrink-0">
+              <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">
+                Projects
+                <span className="ml-1.5 text-charcoal/30 dark:text-[#5c5a57] font-normal normal-case tracking-normal">{projectList.length}/3</span>
               </div>
             </div>
+            <div className="space-y-2">
+              {[0, 1, 2].map(i => {
+                const p = projectList[i]
+                if (p) return <ProjectCard key={p.id} project={p} />
+                return (
+                  <div
+                    key={i}
+                    className="rounded-[12px] border border-dashed border-charcoal/10 dark:border-white/[0.06] px-[18px] py-[14px] flex items-center justify-center min-h-[58px]"
+                  >
+                    {i === 0 ? (
+                      <Link href="/projects/new" className="text-[12px] text-terra hover:text-[#b83333] transition-colors">
+                        + create your first project
+                      </Link>
+                    ) : projectList.length === 0 ? (
+                      <span className="text-[11px] text-charcoal/20 dark:text-[#5c5a57]">slot {i + 1}</span>
+                    ) : (
+                      <Link href="/projects/new" className="text-[11px] text-charcoal/25 dark:text-[#5c5a57] hover:text-terra transition-colors">
+                        + add project
+                      </Link>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
-
         </div>
 
-        {/* Themes + streak */}
-        <div className="grid grid-cols-2 gap-4">
-
-          <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-[18px] py-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">Recurring themes</div>
-              <Link href="/explore" className="text-[11px] text-terra">explore →</Link>
-            </div>
-            <p className="font-serif text-[12px] font-light italic text-charcoal/35 dark:text-[#5c5a57]">
-              Themes appear as your corpus grows.
-            </p>
+        {/* Recent captures */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">Recent captures</div>
+            <Link href="/library" className="text-[11px] text-terra hover:text-[#b83333] transition-colors">library →</Link>
           </div>
-
-          <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-[18px] py-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">Capture streak</div>
-              <div className="font-serif text-[24px] font-light text-terra">0</div>
-            </div>
-            <div className="text-[11px] text-charcoal/35 dark:text-[#5c5a57] mb-2">consecutive days</div>
-            <div className="flex gap-1 flex-wrap">
-              {STREAK_DAYS.map((active, i) => (
-                <div
-                  key={i}
-                  className={[
-                    'w-[22px] h-[22px] rounded-[5px]',
-                    active
-                      ? 'bg-terra border border-terra'
-                      : 'bg-transparent border border-charcoal/8 dark:border-white/[0.07]',
-                  ].join(' ')}
-                />
-              ))}
-            </div>
-            <div className="text-[11px] text-charcoal/35 dark:text-[#5c5a57] mt-[9px]">capture today to keep the streak</div>
-          </div>
-
+          <RecentCaptures captures={recentCaptures} />
         </div>
 
       </div>

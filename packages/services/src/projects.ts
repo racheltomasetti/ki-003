@@ -12,6 +12,7 @@ export async function updateProject(
   data: Partial<{
     name: string
     description: string | null
+    color: string | null
     what: string | null
     why: string | null
     success_looks_like: string | null
@@ -40,7 +41,31 @@ export async function getProjects(client: SupabaseClient, userId: string) {
     .from('projects')
     .select('*')
     .eq('user_id', userId)
+    .eq('status', 'active')
     .order('created_at', { ascending: true })
+}
+
+export async function getArchivedProjects(client: SupabaseClient, userId: string) {
+  return client
+    .from('projects')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'archived')
+    .order('updated_at', { ascending: false })
+}
+
+export async function archiveProject(client: SupabaseClient, projectId: string) {
+  return client
+    .from('projects')
+    .update({ status: 'archived' })
+    .eq('id', projectId)
+}
+
+export async function deleteProject(client: SupabaseClient, projectId: string) {
+  return client
+    .from('projects')
+    .delete()
+    .eq('id', projectId)
 }
 
 export async function createProject(

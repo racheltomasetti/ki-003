@@ -17,10 +17,17 @@
 /* Class-based dark mode — responds to .dark on <html> (set by next-themes) */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Slightly responsive root sizing — bumps rem/spacing typography on wider viewports without
+   changing every arbitrary px-* utility (those stay fixed unless migrated to rem/token sizes). */
+html {
+  font-size: clamp(15px, 14px + 0.35vw, 17px);
+}
+
 /* Base */
 body {
   background-color: theme(--color-cream);
   color: theme(--color-charcoal);
+  font-family: var(--font-poppins), system-ui, sans-serif;
 }
 
 .dark body {

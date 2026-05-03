@@ -133,6 +133,17 @@ export default function NewProjectPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      const { data: existing } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+      if ((existing ?? []).length >= 3) {
+        setError('You have 3 active projects. Archive one to create a new one.')
+        setSubmitting(false)
+        return
+      }
+
       const project = await createProject(supabase, user.id, {
         name: answers.name.trim(),
         what: answers.what.trim() || undefined,

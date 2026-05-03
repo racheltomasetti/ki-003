@@ -1,8 +1,9 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { GoHome } from 'react-icons/go'
+import { GoHomeFill } from 'react-icons/go'
 import { LuLibrary } from 'react-icons/lu'
 import { IoCompassOutline } from 'react-icons/io5'
 import type { Project, Profile } from '@ki/types'
@@ -14,7 +15,7 @@ interface SidebarProps {
 }
 
 const NAV: { href: string; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
-  { href: '/home', label: 'Home', Icon: GoHome },
+  { href: '/home', label: 'Home', Icon: GoHomeFill },
   { href: '/library', label: 'Library', Icon: LuLibrary },
   { href: '/explore', label: 'Explore', Icon: IoCompassOutline },
 ]
@@ -31,8 +32,29 @@ export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
 
       {/* Logo */}
       <div className="px-5 pt-5 pb-4 border-b border-charcoal/10 dark:border-white/[0.07]">
-        <div className="font-serif text-[26px] font-light tracking-[-1px] leading-none text-charcoal dark:text-[#f0ede8]">Ki</div>
-        <div className="font-serif text-[10px] text-charcoal/30 dark:text-[#5c5a57] italic mt-[3px]">in the pursuit of self</div>
+        <div className="grid grid-cols-[30px_1fr] items-center gap-[9px]">
+          <div className="relative h-8 w-[30px] shrink-0">
+            <Image
+              src="/logo-dark.png"
+              alt="Ki"
+              width={320}
+              height={96}
+              priority
+              className="dark:hidden block h-full w-full object-contain"
+            />
+            <Image
+              src="/logo-light.png"
+              alt="Ki"
+              width={320}
+              height={96}
+              priority
+              className="hidden dark:block h-full w-full object-contain"
+            />
+          </div>
+          <p className="font-serif text-[10px] text-charcoal/30 dark:text-[#5c5a57] italic leading-snug min-w-0">
+            in the pursuit of Self
+          </p>
+        </div>
       </div>
 
       {/* Nav */}
@@ -47,16 +69,16 @@ export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
               key={href}
               href={href}
               className={[
-                'flex items-center gap-[9px] px-5 py-[7px] text-[12.5px] border-l-2 transition-all duration-150',
+                'grid grid-cols-[30px_1fr] items-center gap-[9px] px-5 py-[7px] text-[12.5px] border-l-2 transition-all duration-150',
                 active
                   ? 'text-charcoal dark:text-[#f0ede8] bg-terra/10 border-terra font-medium'
                   : 'text-charcoal/50 dark:text-[#9e9b96] border-transparent hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
               ].join(' ')}
             >
-              <span className={['w-[14px] flex justify-center', active ? '' : 'opacity-70'].join(' ')}>
-                <Icon className="text-[14px]" />
+              <span className={['w-[30px] flex justify-center', active ? '' : 'opacity-70'].join(' ')}>
+                <Icon className="text-[18px]" />
               </span>
-              {label}
+              <span>{label}</span>
             </Link>
           )
         })}
@@ -74,26 +96,30 @@ export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
               key={project.id}
               href={`/projects/${project.id}`}
               className={[
-                'flex items-center gap-[9px] px-5 py-[5px] text-[12px] border-l-2 transition-all duration-150',
+                'grid grid-cols-[30px_1fr] items-center gap-[9px] px-5 py-[5px] text-[12px] border-l-2 transition-all duration-150',
                 active
                   ? 'text-charcoal dark:text-[#f0ede8] border-l-2'
                   : 'text-charcoal/30 dark:text-[#5c5a57] border-transparent hover:text-charcoal/60 dark:hover:text-[#9e9b96]',
               ].join(' ')}
               style={active ? { borderLeftColor: color } : {}}
             >
-              <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ backgroundColor: color }} />
+              <span className="w-[30px] flex justify-center">
+                <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ backgroundColor: color }} />
+              </span>
               <span className="truncate">{project.name}</span>
             </Link>
           )
         })}
 
-        <Link
-          href="/projects/new"
-          className="flex items-center gap-2 px-5 py-[5px] text-[11px] text-charcoal/30 dark:text-[#5c5a57] mt-[2px] hover:text-terra dark:hover:text-terra transition-colors"
-        >
-          <span className="text-[14px]">+</span>
-          new project
-        </Link>
+        {projects.length < 3 && (
+          <Link
+            href="/projects/new"
+            className="grid grid-cols-[30px_1fr] items-center gap-[9px] px-5 py-[5px] text-[11px] text-charcoal/30 dark:text-[#5c5a57] mt-[2px] hover:text-terra dark:hover:text-terra transition-colors"
+          >
+            <span className="w-[30px] flex justify-center text-[14px]">+</span>
+            <span>new project</span>
+          </Link>
+        )}
 
       </nav>
 

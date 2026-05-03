@@ -30,6 +30,9 @@ export async function getCaptures(client: SupabaseClient, options: GetCapturesOp
       capture_tags (
         tag_id,
         tags (id, name)
+      ),
+      capture_projects (
+        project_id
       )
     `)
     .neq('status', 'deleted')
@@ -52,6 +55,27 @@ export async function getCaptures(client: SupabaseClient, options: GetCapturesOp
   }
 
   return query
+}
+
+export async function getCaptureCounts(
+  client: SupabaseClient,
+  userId: string
+): Promise<{ total: number; distilled: number }> {
+  const [{ count: total }, { count: distilled }] = await Promise.all([
+    client
+      .from('captures')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .neq('source_type', 'distilled'),
+    client
+      .from('captures')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('source_type', 'distilled')
+      .eq('status', 'active'),
+  ])
+  return { total: total ?? 0, distilled: distilled ?? 0 }
 }
 
 export async function getCapture(client: SupabaseClient, id: string) {
