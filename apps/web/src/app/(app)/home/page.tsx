@@ -125,10 +125,11 @@ function RecentCaptures({ captures }: { captures: CaptureWithEnrichment[] }) {
         const summary = c.enrichments?.summary
 
         return (
-          <div
+          <Link
             key={c.id}
+            href={`/library?captureId=${encodeURIComponent(c.id)}`}
             className={[
-              'flex items-start gap-3 px-4 py-[11px]',
+              'flex items-start gap-3 px-4 py-[11px] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03] transition-colors',
               i < captures.length - 1 ? 'border-b border-charcoal/5 dark:border-white/[0.05]' : '',
             ].join(' ')}
           >
@@ -148,7 +149,7 @@ function RecentCaptures({ captures }: { captures: CaptureWithEnrichment[] }) {
             <div className="text-[10px] text-charcoal/30 dark:text-[#5c5a57] shrink-0 mt-[2px]">
               {relativeTime(c.captured_at)}
             </div>
-          </div>
+          </Link>
         )
       })}
     </div>
@@ -169,7 +170,7 @@ export default async function HomePage() {
   ] = await Promise.all([
     getProjects(supabase, user.id),
     getCaptureCounts(supabase, user.id),
-    getCaptures(supabase, { status: 'active', limit: 8 }),
+    getCaptures(supabase, { status: 'active', limit: 5 }),
   ])
 
   const projectList = (projects ?? []) as Project[]
@@ -177,17 +178,17 @@ export default async function HomePage() {
 
   return (
     <div className="flex-1 h-full overflow-y-auto">
-      <div className="px-6 py-6 max-w-[1120px] mx-auto">
+      <div className="px-6 py-6 max-w-[1120px] mx-auto space-y-4">
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-4">
           <StatCard label="Total captures" value={counts.total} />
           <StatCard label="Active projects" value={projectList.length} />
           <StatCard label="Distilled thoughts" value={counts.distilled} />
         </div>
 
-        {/* Quick capture + Projects — equal height columns on md+ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 md:items-stretch">
+        {/* Widget row — 3 columns to mirror stats width */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:items-stretch">
           <div className="min-w-0 flex flex-col h-full min-h-0">
             <QuickCapture projects={projectList} userId={user.id} />
           </div>
@@ -224,13 +225,29 @@ export default async function HomePage() {
               })}
             </div>
           </div>
+
+          {/* Placeholder widget (skeleton) */}
+          <div className="min-w-0 h-full min-h-0 flex flex-col bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 pt-4 pb-[14px]">
+            <div className="mb-3 shrink-0">
+              <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">
+                Coming next
+              </div>
+            </div>
+            <div className="flex-1 min-h-[180px] rounded-[12px] border border-dashed border-charcoal/10 dark:border-white/[0.06] bg-charcoal/[0.02] dark:bg-white/[0.02] p-4">
+              <div className="animate-pulse space-y-3">
+                <div className="h-3 w-2/3 rounded bg-charcoal/10 dark:bg-white/[0.08]" />
+                <div className="h-3 w-full rounded bg-charcoal/8 dark:bg-white/[0.07]" />
+                <div className="h-3 w-5/6 rounded bg-charcoal/8 dark:bg-white/[0.07]" />
+                <div className="h-16 w-full rounded-[10px] bg-charcoal/7 dark:bg-white/[0.06]" />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Recent captures */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">Recent captures</div>
-            <Link href="/library" className="text-[11px] text-terra hover:text-[#b83333] transition-colors">library →</Link>
           </div>
           <RecentCaptures captures={recentCaptures} />
         </div>

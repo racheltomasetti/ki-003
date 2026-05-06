@@ -486,10 +486,12 @@ export function LibraryClient({
   userId,
   projects,
   initialTags,
+  initialSelectedId,
 }: {
   userId: string
   projects: Project[]
   initialTags: Tag[]
+  initialSelectedId?: string | null
 }) {
   const supabase = createClient()
   const queryClient = useQueryClient()
@@ -499,7 +501,7 @@ export function LibraryClient({
   const [projectFilter, setProjectFilter] = useState<string | null>(null)
   const [tagFilters, setTagFilters] = useState<Set<string>>(new Set())
   const [starredOnly, setStarredOnly] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
   const [tags, setTags] = useState<Tag[]>(initialTags)
   const [localStarred, setLocalStarred] = useState<Map<string, boolean>>(new Map())
 
@@ -508,6 +510,11 @@ export function LibraryClient({
     const t = setTimeout(() => setSearch(inputValue.trim()), 300)
     return () => clearTimeout(t)
   }, [inputValue])
+
+  // Keep selected capture in sync with deep-link query param.
+  useEffect(() => {
+    if (initialSelectedId) setSelectedId(initialSelectedId)
+  }, [initialSelectedId])
 
   const fetchCaptures = useCallback(async () => {
     const { data, error } = await getCaptures(supabase, {

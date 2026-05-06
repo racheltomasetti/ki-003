@@ -23,10 +23,10 @@ const ACCENT_COLORS = [
 ]
 
 const MODE_OPTIONS: { value: ProjectMode; label: string }[] = [
-  { value: 'building',     label: 'Building something' },
+  { value: 'building',     label: 'Building' },
   { value: 'researching',  label: 'Researching' },
-  { value: 'figuring_out', label: 'Figuring something out' },
-  { value: 'creating',     label: 'Creating something' },
+  { value: 'figuring_out', label: 'Figuring out' },
+  { value: 'creating',     label: 'Creating' },
 ]
 
 // ─── Details tab (name, brief fields, mode) ───────────────────────────────────

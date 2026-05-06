@@ -404,7 +404,7 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
   const [messages, setMessages] = useState<ProjectConversation[]>(initialMessages)
   const [highlightedCaptureId, setHighlightedCaptureId] = useState<string | null>(null)
 
-  const rawCaptures = captures.filter(c => c.source_type !== 'distilled')
+  const rawCaptures = captures
 
   const handleCopy = async () => {
     if (!distillerContent.trim()) return

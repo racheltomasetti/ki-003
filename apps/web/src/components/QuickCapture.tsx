@@ -10,11 +10,17 @@ type VoiceState = 'idle' | 'recording' | 'processing'
 
 /** Shared surface — logo tap target uses fixed height; editor grows from same min height */
 const INPUT_SURFACE_CLASSES =
-  'bg-charcoal/5 dark:bg-[#1d1b1a] border border-charcoal/10 dark:border-white/[0.08] rounded-[18px]'
+  'bg-charcoal/5 dark:bg-[#1d1b1a] border border-charcoal/10 dark:border-white/[0.08]'
 
 /** Grows with parent flex so Quick Capture matches Projects column height */
-const VOICE_TAP_SLOT = `w-full min-h-[112px] flex-1 ${INPUT_SURFACE_CLASSES}`
-const EDITOR_SLOT = `w-full min-h-[112px] flex-1 min-h-0 ${INPUT_SURFACE_CLASSES} resize-y`
+const VOICE_TAP_SLOT = `w-full min-h-[112px] flex-1 rounded-[10px] ${INPUT_SURFACE_CLASSES}`
+const EDITOR_SLOT = `w-full min-h-[112px] flex-1 min-h-0 rounded-[18px] ${INPUT_SURFACE_CLASSES} resize-y`
+
+function formatRecordingDuration(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
 
 async function transcribeBlob(blob: Blob): Promise<string> {
   const formData = new FormData()
@@ -258,6 +264,7 @@ interface Props {
 export function QuickCapture({ projects, userId }: Props) {
   const supabase = createClient()
 
+  const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice')
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
   /** Raw thought text — filled after transcription; user can edit before save */
   const [body, setBody] = useState('')
@@ -266,6 +273,8 @@ export function QuickCapture({ projects, userId }: Props) {
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -273,8 +282,21 @@ export function QuickCapture({ projects, userId }: Props) {
   const clearCapture = useCallback(() => {
     setBody('')
     setInEditor(false)
+    setInputMode('voice')
     setError(null)
+    setRecordingStartedAt(null)
+    setRecordingSeconds(0)
   }, [])
+
+  useEffect(() => {
+    if (voiceState !== 'recording' || recordingStartedAt === null) return
+    const tick = () => {
+      setRecordingSeconds(Math.floor((Date.now() - recordingStartedAt) / 1000))
+    }
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [voiceState, recordingStartedAt])
 
   const startRecording = useCallback(async () => {
     setError(null)
@@ -301,6 +323,8 @@ export function QuickCapture({ projects, userId }: Props) {
 
       recorder.start()
       mediaRecorderRef.current = recorder
+      setRecordingStartedAt(Date.now())
+      setRecordingSeconds(0)
       setVoiceState('recording')
     } catch {
       setError('Microphone access is required for voice capture.')
@@ -310,6 +334,7 @@ export function QuickCapture({ projects, userId }: Props) {
   const stopRecording = useCallback(() => {
     mediaRecorderRef.current?.stop()
     mediaRecorderRef.current = null
+    setRecordingStartedAt(null)
   }, [])
 
   const handleSave = async ({ title, body, projectIds, tagIds }: {
@@ -344,71 +369,118 @@ export function QuickCapture({ projects, userId }: Props) {
     }
   }
 
-  const hasContent = inEditor && body.trim().length > 0
+  const hasContent = (inEditor || inputMode === 'text') && body.trim().length > 0
 
   return (
     <>
       <div className="w-full h-full min-h-0 flex flex-col bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 pt-4 pb-[14px]">
 
-        {/* Title */}
-        <div className="text-[10px] font-medium text-charcoal/40 dark:text-[#5c5a57] uppercase tracking-[0.08em] mb-3 shrink-0">
-          Thought Capture
+        {/* Title + mode toggle */}
+        <div className="flex items-center justify-between mb-3 shrink-0">
+          <div className="text-[10px] font-medium text-charcoal/40 dark:text-[#5c5a57] uppercase tracking-[0.08em]">
+            Thought Capture
+          </div>
+          <div className="flex items-center gap-0.5 bg-charcoal/[0.05] dark:bg-white/[0.05] rounded-[8px] p-0.5">
+            <button
+              type="button"
+              onClick={() => setInputMode('voice')}
+              aria-label="Voice input"
+              className={[
+                'flex items-center justify-center w-6 h-6 rounded-[6px] transition-all',
+                inputMode === 'voice'
+                  ? 'bg-charcoal/[0.09] dark:bg-white/[0.12] text-charcoal dark:text-[#f0ede8]'
+                  : 'text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal/55 dark:hover:text-[#9e9b96]',
+              ].join(' ')}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
+                <line x1="8" y1="22" x2="16" y2="22"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (voiceState === 'recording') stopRecording()
+                setInputMode('text')
+              }}
+              aria-label="Text input"
+              className={[
+                'flex items-center justify-center w-6 h-6 rounded-[6px] transition-all',
+                inputMode === 'text'
+                  ? 'bg-charcoal/[0.09] dark:bg-white/[0.12] text-charcoal dark:text-[#f0ede8]'
+                  : 'text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal/55 dark:hover:text-[#9e9b96]',
+              ].join(' ')}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Voice capture → editable transcript — fills space to match Projects widget */}
         <div className="flex-1 min-h-0 flex flex-col gap-2">
-        {!inEditor ? (
-          <button
-            type="button"
-            onClick={voiceState === 'recording' ? stopRecording : startRecording}
-            disabled={voiceState === 'processing'}
-            aria-label={voiceState === 'recording' ? 'Stop recording' : voiceState === 'processing' ? 'Transcribing' : 'Start recording'}
-            className={[
-              VOICE_TAP_SLOT,
-              'flex items-center justify-center transition-all min-h-[112px]',
-              voiceState === 'recording'
-                ? '!border-terra/45 !bg-terra/8'
-                : voiceState === 'processing'
-                  ? '!border-charcoal/15 dark:!border-white/[0.13] cursor-wait'
-                  : 'hover:border-terra/35',
-            ].join(' ')}
-          >
-            <Image
-              src="/logo-dark.png"
-              alt="Ki voice capture"
-              width={64}
-              height={64}
-              unoptimized
-              quality={100}
-              sizes="64px"
+        {inputMode === 'voice' && !inEditor ? (
+          <>
+            <button
+              type="button"
+              onClick={voiceState === 'recording' ? stopRecording : startRecording}
+              disabled={voiceState === 'processing'}
+              aria-label={voiceState === 'recording' ? 'Stop recording' : voiceState === 'processing' ? 'Transcribing' : 'Start recording'}
               className={[
-                'dark:hidden block w-[64px] h-[64px] object-contain [transform-origin:50%_50%] [will-change:transform]',
-                voiceState === 'recording' ? 'animate-spin' : '',
-                voiceState === 'processing' ? 'animate-spin' : '',
+                VOICE_TAP_SLOT,
+                'relative flex items-center justify-center transition-all min-h-[112px]',
+                voiceState === 'recording'
+                  ? '!border-terra/45 !bg-terra/8'
+                  : voiceState === 'processing'
+                    ? '!border-charcoal/15 dark:!border-white/[0.13] cursor-wait'
+                    : 'hover:border-terra/35',
               ].join(' ')}
-              style={voiceState === 'processing' ? { animationDirection: 'reverse' } : undefined}
-            />
-            <Image
-              src="/logo-light.png"
-              alt="Ki voice capture"
-              width={64}
-              height={64}
-              unoptimized
-              quality={100}
-              sizes="64px"
-              className={[
-                'hidden dark:block w-[64px] h-[64px] object-contain [transform-origin:50%_50%] [will-change:transform]',
-                voiceState === 'recording' ? 'animate-spin' : '',
-                voiceState === 'processing' ? 'animate-spin' : '',
-              ].join(' ')}
-              style={voiceState === 'processing' ? { animationDirection: 'reverse' } : undefined}
-            />
-          </button>
+            >
+              <Image
+                src="/logo-dark.png"
+                alt="Ki voice capture"
+                width={72}
+                height={72}
+                unoptimized
+                quality={100}
+                sizes="72px"
+                className={[
+                  'dark:hidden block w-[72px] h-[72px] object-contain [transform-origin:50%_50%] [will-change:transform]',
+                  voiceState === 'recording' ? 'animate-spin' : '',
+                  voiceState === 'processing' ? 'animate-spin' : '',
+                ].join(' ')}
+                style={voiceState === 'processing' ? { animationDirection: 'reverse' } : undefined}
+              />
+              <Image
+                src="/logo-light.png"
+                alt="Ki voice capture"
+                width={72}
+                height={72}
+                unoptimized
+                quality={100}
+                sizes="72px"
+                className={[
+                  'hidden dark:block w-[72px] h-[72px] object-contain [transform-origin:50%_50%] [will-change:transform]',
+                  voiceState === 'recording' ? 'animate-spin' : '',
+                  voiceState === 'processing' ? 'animate-spin' : '',
+                ].join(' ')}
+                style={voiceState === 'processing' ? { animationDirection: 'reverse' } : undefined}
+              />
+              {voiceState === 'recording' && (
+                <p className="absolute bottom-3 left-1/2 -translate-x-1/2 font-sans text-[13px] font-medium text-charcoal/50 dark:text-[#9e9b96]">
+                  {formatRecordingDuration(recordingSeconds)}
+                </p>
+              )}
+            </button>
+          </>
         ) : (
           <textarea
             value={body}
             onChange={e => setBody(e.target.value)}
-            placeholder="Edit your thought…"
+            placeholder=""
             className={`${EDITOR_SLOT} px-[14px] py-3 font-serif text-[13px] font-light text-charcoal dark:text-[#f0ede8] leading-relaxed outline-none focus:border-charcoal/20 dark:focus:border-white/[0.13] transition-colors placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic`}
           />
         )}
@@ -419,7 +491,7 @@ export function QuickCapture({ projects, userId }: Props) {
         {/* Footer */}
         <div className="flex items-center justify-between mt-[10px] gap-3 shrink-0">
           <div className="min-w-0 flex items-center">
-            {inEditor && voiceState === 'idle' && (
+            {(inEditor || inputMode === 'text') && voiceState === 'idle' && (
               <button
                 type="button"
                 onClick={clearCapture}
@@ -430,19 +502,14 @@ export function QuickCapture({ projects, userId }: Props) {
             )}
           </div>
 
-          {/* Save */}
-          <button
-            onClick={() => hasContent && setShowModal(true)}
-            disabled={!hasContent}
-            className={[
-              'px-4 py-[6px] rounded-[10px] font-sans text-[12px] font-medium transition-all',
-              hasContent
-                ? 'bg-terra text-cream hover:bg-[#b83333] cursor-pointer'
-                : 'bg-charcoal/8 dark:bg-white/[0.06] text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
-            ].join(' ')}
-          >
-            Save
-          </button>
+          {hasContent && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-4 py-[6px] rounded-[10px] font-sans text-[12px] font-medium transition-all bg-terra text-cream hover:bg-[#b83333] cursor-pointer"
+            >
+              Save
+            </button>
+          )}
         </div>
 
       </div>

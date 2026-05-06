@@ -3,7 +3,11 @@ import { getProjects, getTags } from '@ki/services'
 import { LibraryClient } from '@/components/LibraryClient'
 import type { Project, Tag } from '@ki/types'
 
-export default async function LibraryPage() {
+export default async function LibraryPage({
+  searchParams,
+}: {
+  searchParams?: { captureId?: string | string[] }
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -18,6 +22,11 @@ export default async function LibraryPage() {
       userId={user.id}
       projects={(projects ?? []) as Project[]}
       initialTags={(tags ?? []) as Tag[]}
+      initialSelectedId={
+        typeof searchParams?.captureId === 'string'
+          ? searchParams.captureId
+          : null
+      }
     />
   )
 }

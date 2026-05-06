@@ -3,8 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { GoHomeFill } from 'react-icons/go'
 import { LuLibrary } from 'react-icons/lu'
+import { HiMiniHome } from "react-icons/hi2";
 import { IoCompassOutline } from 'react-icons/io5'
 import type { Project, Profile } from '@ki/types'
 
@@ -15,8 +15,8 @@ interface SidebarProps {
 }
 
 const NAV: { href: string; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
-  { href: '/home', label: 'Home', Icon: GoHomeFill },
-  { href: '/library', label: 'Library', Icon: LuLibrary },
+  { href: '/home', label: 'Home', Icon: HiMiniHome },
+  { href: '/library', label: 'Corpus', Icon: LuLibrary },
   { href: '/explore', label: 'Explore', Icon: IoCompassOutline },
 ]
 
@@ -40,7 +40,7 @@ export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
               width={320}
               height={96}
               priority
-              className="dark:hidden block h-full w-full object-contain"
+              className="dark:hidden block h-full w-full object-contain "
             />
             <Image
               src="/logo-light.png"
@@ -51,9 +51,9 @@ export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
               className="hidden dark:block h-full w-full object-contain"
             />
           </div>
-          <p className="font-serif text-[10px] text-charcoal/30 dark:text-[#5c5a57] italic leading-snug min-w-0">
+          {/* <p className="font-serif text-[10px] text-charcoal/30 dark:text-[#5c5a57] italic leading-snug min-w-0">
             in the pursuit of Self
-          </p>
+          </p> */}
         </div>
       </div>
 
