@@ -112,59 +112,74 @@ export interface CaptureTag {
   tags?: Tag
 }
 
-export type ProjectMode = 'building' | 'researching' | 'figuring_out' | 'creating'
+export type PursuitStatus = 'active' | 'curiosity' | 'archived'
 
-export type ProjectConversationRole = 'user' | 'assistant'
+export type PursuitMode = 'building' | 'researching' | 'figuring_out' | 'creating'
+
+export type PursuitConversationRole = 'hero' | 'ki'
 
 // source_metadata shape for distilled captures (source_type === 'distilled').
 // Written at save time by the thought distiller — never by the enrichment pipeline.
 export interface DistilledCaptureMetadata {
   referenced_capture_ids: string[]   // UUIDs of the captures Ki drew from during distillation
   distilled_at: string               // ISO timestamp of when the user saved this distilled thought
-  project_id: string                 // the project workspace where this was distilled
+  pursuit_id: string                 // the pursuit workspace where this was distilled
 }
 
-export interface Project {
+// Shape of each entry in enrichments.pursuit_connections jsonb column.
+// Written by enrich-capture (live) and match-corpus-to-pursuit (retroactive).
+export interface PursuitConnection {
+  pursuit_id: string   // uuid of the matched pursuit
+  reason: string       // human-readable explanation of why this capture resonates
+  confidence: number   // 0–1 cosine similarity score
+  matched_at: string   // ISO timestamp — ≈ captured_at if live match, later if retroactive
+}
+
+export interface Pursuit {
   id: string
   user_id: string
   name: string
   description: string | null
   color: string | null
+  status: PursuitStatus
+  core_question: string | null        // null for curiosities; required for active
+  core_question_embedding: number[] | null
   what: string | null
   why: string | null
   success_looks_like: string | null
   open_question: string | null
-  project_mode: ProjectMode | null
+  pursuit_mode: PursuitMode | null
   created_at: string
   updated_at: string
 }
 
-export interface ProjectConversation {
+export interface PursuitConversation {
   id: string
-  project_id: string
+  pursuit_id: string
   user_id: string
-  role: ProjectConversationRole
+  role: PursuitConversationRole
   content: string
   created_at: string
 }
 
-export interface ProjectArtifact {
+export interface PursuitArtifact {
   id: string
-  project_id: string
+  pursuit_id: string
   user_id: string
   type: string
   title: string
   content: string
+  data: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
 
-export interface CaptureProject {
+export interface CapturePursuit {
   capture_id: string
-  project_id: string
+  pursuit_id: string
   user_id: string
   created_at: string
-  projects?: Project
+  pursuits?: Pursuit
 }
 
 // ─── Derived / composed types used in the UI ─────────────────────────────────
@@ -172,7 +187,7 @@ export interface CaptureProject {
 export interface CaptureWithEnrichment extends Capture {
   enrichments: Enrichment | null
   capture_tags: CaptureTag[]
-  capture_projects?: CaptureProject[]
+  capture_pursuits?: CapturePursuit[]
 }
 
 // ─── Insert / update payloads ─────────────────────────────────────────────────

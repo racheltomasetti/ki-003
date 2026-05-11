@@ -1,12 +1,12 @@
 import type { ComponentType } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { getProjects, getCaptureCounts, getCaptures } from '@ki/services'
+import { getActivePursuits, getCaptureCounts, getCaptures } from '@ki/services'
 import Link from 'next/link'
 import { MdKeyboardVoice } from 'react-icons/md'
 import { FaPencil } from 'react-icons/fa6'
 import { IoAttach } from 'react-icons/io5'
 import { QuickCapture } from '@/components/QuickCapture'
-import type { Project, CaptureWithEnrichment } from '@ki/types'
+import type { Pursuit, CaptureWithEnrichment } from '@ki/types'
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ function StatCard({
   )
 }
 
-// ─── Project card ─────────────────────────────────────────────────────────────
+// ─── Pursuit card ─────────────────────────────────────────────────────────────
 
 const MODE_COLORS: Record<string, string> = {
   building: '#9e2a2b',
@@ -48,20 +48,20 @@ const MODE_LABELS: Record<string, string> = {
   figuring_out: 'figuring out',
 }
 
-function ProjectCard({ project }: { project: Project }) {
-  const color = project.color ?? '#9e9b96'
-  const mode = project.project_mode
+function PursuitCard({ pursuit }: { pursuit: Pursuit }) {
+  const color = pursuit.color ?? '#9e9b96'
+  const mode = pursuit.pursuit_mode
   const modeColor = mode ? MODE_COLORS[mode] : null
   const modeLabel = mode ? MODE_LABELS[mode] : null
 
   return (
     <Link
-      href={`/projects/${project.id}`}
+      href={`/pursuits/${pursuit.id}`}
       className="block bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-[18px] py-4 hover:border-charcoal/15 dark:hover:border-white/[0.13] hover:bg-charcoal/[0.05] dark:hover:bg-[#1d1b1a] transition-all"
     >
       <div className="flex items-center gap-2 mb-[6px] flex-wrap">
         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-        <span className="text-[14px] font-medium text-charcoal dark:text-[#f0ede8]">{project.name}</span>
+        <span className="text-[14px] font-medium text-charcoal dark:text-[#f0ede8]">{pursuit.name}</span>
         {modeLabel && modeColor && (
           <span
             className="text-[9px] font-medium px-2 py-[2px] rounded-full uppercase tracking-[0.06em]"
@@ -71,9 +71,9 @@ function ProjectCard({ project }: { project: Project }) {
           </span>
         )}
       </div>
-      {(project.description || project.what) && (
+      {(pursuit.description || pursuit.what) && (
         <p className="font-serif text-[12px] font-light italic text-charcoal/50 dark:text-[#9e9b96] leading-relaxed line-clamp-2 ml-[14px]">
-          {project.description ?? project.what}
+          {pursuit.description ?? pursuit.what}
         </p>
       )}
     </Link>
@@ -164,16 +164,16 @@ export default async function HomePage() {
   if (!user) return null
 
   const [
-    { data: projects },
+    { data: pursuits },
     counts,
     { data: recentRows },
   ] = await Promise.all([
-    getProjects(supabase, user.id),
+    getActivePursuits(supabase, user.id),
     getCaptureCounts(supabase, user.id),
     getCaptures(supabase, { status: 'active', limit: 5 }),
   ])
 
-  const projectList = (projects ?? []) as Project[]
+  const pursuitList = (pursuits ?? []) as Pursuit[]
   const recentCaptures = (recentRows ?? []) as CaptureWithEnrichment[]
 
   return (
@@ -183,41 +183,41 @@ export default async function HomePage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           <StatCard label="Total captures" value={counts.total} />
-          <StatCard label="Active projects" value={projectList.length} />
+          <StatCard label="Active pursuits" value={pursuitList.length} />
           <StatCard label="Distilled thoughts" value={counts.distilled} />
         </div>
 
         {/* Widget row — 3 columns to mirror stats width */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:items-stretch">
           <div className="min-w-0 flex flex-col h-full min-h-0">
-            <QuickCapture projects={projectList} userId={user.id} />
+            <QuickCapture projects={pursuitList} userId={user.id} />
           </div>
 
           <div className="min-w-0 h-full min-h-0 flex flex-col bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 pt-4 pb-[14px]">
             <div className="mb-3 shrink-0">
               <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">
-                Projects
-                <span className="ml-1.5 text-charcoal/30 dark:text-[#5c5a57] font-normal normal-case tracking-normal">{projectList.length}/3</span>
+                Pursuits
+                <span className="ml-1.5 text-charcoal/30 dark:text-[#5c5a57] font-normal normal-case tracking-normal">{pursuitList.length}/3</span>
               </div>
             </div>
             <div className="space-y-2">
               {[0, 1, 2].map(i => {
-                const p = projectList[i]
-                if (p) return <ProjectCard key={p.id} project={p} />
+                const p = pursuitList[i]
+                if (p) return <PursuitCard key={p.id} pursuit={p} />
                 return (
                   <div
                     key={i}
                     className="rounded-[12px] border border-dashed border-charcoal/10 dark:border-white/[0.06] px-[18px] py-[14px] flex items-center justify-center min-h-[58px]"
                   >
                     {i === 0 ? (
-                      <Link href="/projects/new" className="text-[12px] text-terra hover:text-[#b83333] transition-colors">
-                        + create your first project
+                      <Link href="/pursuits/new" className="text-[12px] text-terra hover:text-[#b83333] transition-colors">
+                        + start your first pursuit
                       </Link>
-                    ) : projectList.length === 0 ? (
+                    ) : pursuitList.length === 0 ? (
                       <span className="text-[11px] text-charcoal/20 dark:text-[#5c5a57]">slot {i + 1}</span>
                     ) : (
-                      <Link href="/projects/new" className="text-[11px] text-charcoal/25 dark:text-[#5c5a57] hover:text-terra transition-colors">
-                        + add project
+                      <Link href="/pursuits/new" className="text-[11px] text-charcoal/25 dark:text-[#5c5a57] hover:text-terra transition-colors">
+                        + add pursuit
                       </Link>
                     )}
                   </div>

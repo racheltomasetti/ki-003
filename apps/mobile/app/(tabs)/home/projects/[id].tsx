@@ -7,8 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppTheme } from '@/hooks/useAppTheme'
-import { useProjects, useProjectCaptures } from '@/hooks/useProjects'
-import type { CaptureWithEnrichment } from '@ki/types'
+import { usePursuits, usePursuitCaptures } from '@/hooks/useProjects'
+import type { Pursuit, CaptureWithEnrichment } from '@ki/types'
 
 function formatTimestamp(dateStr: string): string {
   const date = new Date(dateStr)
@@ -66,15 +66,15 @@ export default function ProjectDetailScreen() {
   const router = useRouter()
   const { colors } = useAppTheme()
 
-  const { data: projects } = useProjects()
-  const { data: captures, isLoading } = useProjectCaptures(id)
+  const { data: projects } = usePursuits()
+  const { data: captures, isLoading } = usePursuitCaptures(id)
 
-  const project = projects?.find(p => p.id === id)
+  const project = projects?.find((p: Pursuit) => p.id === id)
   const [activeTag, setActiveTag] = useState<string | null>(null)
 
   const allTags = useMemo(() => {
     const map = new Map<string, string>()
-    for (const c of captures ?? []) {
+    for (const c of (captures ?? []) as CaptureWithEnrichment[]) {
       for (const ct of c.capture_tags ?? []) {
         if (ct.tags) map.set(ct.tags.id, ct.tags.name)
       }
@@ -84,7 +84,7 @@ export default function ProjectDetailScreen() {
 
   const filtered = useMemo(() => {
     if (!activeTag) return captures ?? []
-    return (captures ?? []).filter(c =>
+    return (captures ?? [] as CaptureWithEnrichment[]).filter((c: CaptureWithEnrichment) =>
       c.capture_tags?.some(ct => ct.tag_id === activeTag)
     )
   }, [captures, activeTag])

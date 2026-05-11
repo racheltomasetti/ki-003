@@ -2,13 +2,13 @@
 
 ## What We're Building
 
-Ki is a thinking tool for builders and creators. It is not for everyone — and that specificity is a feature, not a limitation.
+Ki is intentional software for creating the life you desire. It is not a note-taking app, a journal, or a second brain. It is the space where raw, unfinished thinking becomes something you can work with — where captures accumulate into clarity, and clarity becomes action.
 
-Builders already have the idea. What they lack is a system that captures thinking fast enough to keep up with it, organizes it without friction, and then helps distill it into the clarity needed to actually build. Ki is that system.
+The central entity is a **pursuit**: something you are carrying — a question you are living, a thing you are building, a direction you are moving in. At its center is a core question that gives the pursuit its meaning. Users carry a maximum of three active pursuits at a time. Anything not yet ready to carry lives as a **curiosity** (uncapped, no core question, same table, different status).
 
-The loop: **capture a thought → organize it → distill it into action.**
+The loop: **capture a thought → connect it to a pursuit → distill it into action.**
 
-Full product context: `.claude/PRD.md`
+Full product context: `docs/MISSION.md` (north star — read before any product decision) and `docs/PURSUIT_MODEL.md` (entity model, data schema, resonance matching).
 
 ---
 
@@ -119,7 +119,7 @@ app/
 │   └── sign-up.tsx
 └── (tabs)/
     ├── home/
-    │   └── index.tsx           # Projects overview
+    │   └── index.tsx           # Pursuits overview
     ├── library/
     │   ├── index.tsx           # All captures feed + search
     │   └── captures/[id].tsx   # Capture detail + enrichment
@@ -136,7 +136,7 @@ store/
 
 hooks/
 ├── useCaptures.ts
-├── useProjects.ts
+├── usePursuits.ts
 └── useEnrichments.ts
 ```
 
@@ -154,10 +154,10 @@ app/
 │   └── sign-up/
 └── (app)/
     ├── library/        # Corpus feed — all captures, searchable
-    ├── projects/
-    │   ├── index/      # Projects list
-    │   └── [id]/       # Project canvas — the primary thinking workspace
-    └── chat/           # Chat with Ki (global, not project-scoped)
+    ├── pursuits/
+    │   ├── index/      # Pursuits list (active + curiosities)
+    │   └── [id]/       # Pursuit workspace — the primary thinking environment
+    └── chat/           # Chat with Ki (global, not pursuit-scoped)
 ```
 
 ---
@@ -172,7 +172,7 @@ packages/types/src/
 packages/services/src/
 ├── captures.ts   # All capture CRUD
 ├── enrichments.ts # Read only
-├── projects.ts   # Project CRUD + capture-project relationships
+├── pursuits.ts   # Pursuit CRUD + capture-pursuit relationships (renamed from projects.ts)
 ├── storage.ts    # Signed URLs, media upload
 ├── profiles.ts   # Profile + memory document
 └── index.ts
@@ -194,9 +194,9 @@ packages/services/src/
 
 **Audio is ephemeral.** Record → transcribe → store transcript → delete audio. Audio never persists.
 
-**Projects are the primary organizational unit.** A capture can belong to multiple projects. Tags are cross-cutting labels that work inside and across projects. Both exist — they are different tools.
+**Pursuits are the primary organizational unit.** A capture can belong to multiple pursuits. Tags are cross-cutting labels that work inside and across pursuits. Both exist — they are different tools. Maximum three active pursuits per user (hard constraint). Curiosities are uncapped and live in the same table with `status='curiosity'`.
 
-**The canvas is project-scoped on web.** Each project has a canvas. Captures assigned to that project are available as nodes. The agent reads the project's corpus when operating in a canvas.
+**The pursuit workspace is pursuit-scoped on web.** Each pursuit has a workspace. Captures assigned to that pursuit are available as context. The agent reads the pursuit's corpus and core question when operating in a pursuit workspace.
 
 **Memory document is the first chat context layer.** Always included in every Chat with Ki interaction at ~800 tokens. Layer 2 is RAG: top 10 captures via pgvector, weighted starred first → similarity → recency.
 
@@ -229,23 +229,30 @@ deleted  → permanent, cascades to enrichments
 
 **captures** — id, user_id, type, source_type, title, body, media_paths, user_context, parent_id, is_chunked, enrichment_profile, status, visibility, is_starred, captured_at
 
-**enrichments** — id, capture_id, summary, themes, sentiment, mood_tags, energy_level, capture_intent, questions_raised, people_mentioned, key_quotes, entities, source_sentiment, time_of_day_cat, embedding (vector 1536), enrichment_status, processed_at, model_used
+**enrichments** — id, capture_id, summary, themes, sentiment, mood_tags, energy_level, capture_intent, questions_raised, people_mentioned, key_quotes, entities, source_sentiment, time_of_day_cat, embedding (vector 1536), enrichment_status, processed_at, model_used, **pursuit_connections** (jsonb — `[{pursuit_id, reason, confidence, matched_at}]`)
 
 **tags** — id, user_id, name
 
 **capture_tags** — capture_id, tag_id, user_id
 
-**projects** — id, user_id, name, description, color
+**pursuits** — id, user_id, name, description, color, **status** ('active'|'curiosity'|'archived'), **core_question** (text, null for curiosities), **core_question_embedding** (vector 1536), what, why, success_looks_like, open_question
+— Max 3 active pursuits per user. See `docs/PURSUIT_MODEL.md` for full spec.
 
-**capture_projects** — capture_id, project_id, user_id
+**capture_pursuits** — capture_id, pursuit_id, user_id
+
+**pursuit_artifacts** — id, pursuit_id, user_id, type, title, content, data (jsonb), created_at
 
 ---
 
 ## Edge Functions
 
-**enrich-capture** — triggered by Postgres webhook on captures INSERT. Claude Haiku enrichment + OpenAI embedding. Never blocks the capture.
+**enrich-capture** — triggered by Postgres webhook on captures INSERT. Claude Haiku enrichment + OpenAI embedding + pursuit resonance matching (writes `pursuit_connections` to enrichments). Never blocks the capture.
+
+**match-corpus-to-pursuit** — triggered when a pursuit is promoted from curiosity → active. Retroactive resonance pass across the user's full corpus. Writes `pursuit_connections` entries for matches above threshold. Runs asynchronously.
 
 **chat-with-ki** — called from mobile chat tab and web. Embeds question → match_captures RPC (pgvector) → layers memory document → Claude Sonnet → returns response + citations.
+
+**pursuit-agent** — called from the pursuit workspace. Reads pursuit corpus + core question + memory document → Claude Sonnet with tool calling → returns response + optional artifact + referenced_capture_ids.
 
 ---
 
@@ -290,6 +297,8 @@ cd apps/mobile && npx expo run:ios   # Run on iOS simulator
 - Do not add URL capture on mobile — Phase 2
 - Do not add text or file capture on mobile yet — nail voice first
 - Do not use `is_pinned` — the field is `is_starred`
-- Do not build the canvas until the corpus is live and chat is verified working
 - Do not create a Supabase client inline in a component — use the injected client pattern
-- Do not build for a general audience — Ki is for builders and creators
+- Do not use "project" terminology anywhere — the entity is "pursuit". Tables: `pursuits`, `capture_pursuits`. Routes: `/pursuits/[id]`. Services: `pursuits.ts`.
+- Do not allow more than 3 active pursuits per user — enforce at the service layer
+- Do not write `pursuit_connections` from the app — only `enrich-capture` and `match-corpus-to-pursuit` Edge Functions write this field
+- Read `docs/MISSION.md` before any product decision. Read `docs/PURSUIT_MODEL.md` before any schema or service work.

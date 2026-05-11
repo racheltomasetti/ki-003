@@ -3,8 +3,8 @@
 import Image from 'next/image'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { createCapture, addCaptureToProject, addTagToCapture, getTags, createTag } from '@ki/services'
-import type { Project, Tag } from '@ki/types'
+import { createCapture, addCaptureToPursuit, addTagToCapture, getTags, createTag } from '@ki/services'
+import type { Pursuit, Tag } from '@ki/types'
 
 type VoiceState = 'idle' | 'recording' | 'processing'
 
@@ -41,14 +41,14 @@ async function transcribeBlob(blob: Blob): Promise<string> {
 
 interface SaveModalProps {
   body: string
-  projects: Project[]
+  pursuits: Pursuit[]
   userId: string
   onSave: (opts: { title: string; body: string; projectIds: string[]; tagIds: string[] }) => Promise<void>
   onClose: () => void
   saving: boolean
 }
 
-function SaveModal({ body: initialBody, projects, userId, onSave, onClose, saving }: SaveModalProps) {
+function SaveModal({ body: initialBody, pursuits, userId, onSave, onClose, saving }: SaveModalProps) {
   const supabase = createClient()
 
   const [title, setTitle] = useState('')
@@ -130,13 +130,13 @@ function SaveModal({ body: initialBody, projects, userId, onSave, onClose, savin
           {/* Title */}
           <div>
             <label className="block font-sans text-[10px] font-semibold text-charcoal/35 dark:text-[#5c5a57] uppercase tracking-widest mb-1.5">
-              Title <span className="normal-case font-normal opacity-60">(optional)</span>
+              Title
             </label>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Give this thought a name…"
+              placeholder=""
               className="w-full bg-charcoal/[0.04] dark:bg-white/[0.04] border border-charcoal/8 dark:border-white/[0.07] rounded-[10px] px-3 py-2.5 font-sans text-[13px] text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] outline-none focus:border-charcoal/20 dark:focus:border-white/[0.13] transition-colors"
             />
           </div>
@@ -154,14 +154,14 @@ function SaveModal({ body: initialBody, projects, userId, onSave, onClose, savin
             />
           </div>
 
-          {/* Projects */}
-          {projects.length > 0 && (
+          {/* Pursuits */}
+          {pursuits.length > 0 && (
             <div>
               <label className="block font-sans text-[10px] font-semibold text-charcoal/35 dark:text-[#5c5a57] uppercase tracking-widest mb-2">
-                Projects
+                Pursuits
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {projects.map(p => {
+                {pursuits.map(p => {
                   const active = selectedProjectIds.includes(p.id)
                   const color = p.color ?? '#9e2a2b'
                   return (
@@ -257,7 +257,7 @@ function SaveModal({ body: initialBody, projects, userId, onSave, onClose, savin
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
-  projects: Project[]
+  projects: Pursuit[]
   userId: string
 }
 
@@ -355,7 +355,7 @@ export function QuickCapture({ projects, userId }: Props) {
       })
 
       await Promise.all([
-        ...projectIds.map(pid => addCaptureToProject(supabase, capture.id, pid, userId)),
+        ...projectIds.map(pid => addCaptureToPursuit(supabase, capture.id, pid, userId)),
         ...tagIds.map(tid => addTagToCapture(supabase, capture.id, tid, userId)),
       ])
 
@@ -517,7 +517,7 @@ export function QuickCapture({ projects, userId }: Props) {
       {showModal && (
         <SaveModal
           body={body.trim()}
-          projects={projects}
+          pursuits={projects}
           userId={userId}
           onSave={handleSave}
           onClose={() => setShowModal(false)}

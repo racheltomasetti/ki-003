@@ -69,7 +69,7 @@ export type Database = {
             foreignKeyName: "canvas_conversations_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "pursuits"
             referencedColumns: ["id"]
           },
           {
@@ -129,7 +129,7 @@ export type Database = {
             foreignKeyName: "canvas_edges_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "pursuits"
             referencedColumns: ["id"]
           },
           {
@@ -210,7 +210,7 @@ export type Database = {
             foreignKeyName: "canvas_nodes_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "pursuits"
             referencedColumns: ["id"]
           },
           {
@@ -222,23 +222,23 @@ export type Database = {
           },
         ]
       }
-      capture_projects: {
+      capture_pursuits: {
         Row: {
           capture_id: string
           created_at: string
-          project_id: string
+          pursuit_id: string
           user_id: string
         }
         Insert: {
           capture_id: string
           created_at?: string
-          project_id: string
+          pursuit_id: string
           user_id: string
         }
         Update: {
           capture_id?: string
           created_at?: string
-          project_id?: string
+          pursuit_id?: string
           user_id?: string
         }
         Relationships: [
@@ -251,9 +251,9 @@ export type Database = {
           },
           {
             foreignKeyName: "capture_projects_project_id_fkey"
-            columns: ["project_id"]
+            columns: ["pursuit_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "pursuits"
             referencedColumns: ["id"]
           },
           {
@@ -412,6 +412,7 @@ export type Database = {
           mood_tags: string[] | null
           people_mentioned: string[] | null
           processed_at: string | null
+          pursuit_connections: Json | null
           questions_raised: string[] | null
           sentiment: string | null
           source_sentiment: string | null
@@ -434,6 +435,7 @@ export type Database = {
           mood_tags?: string[] | null
           people_mentioned?: string[] | null
           processed_at?: string | null
+          pursuit_connections?: Json | null
           questions_raised?: string[] | null
           sentiment?: string | null
           source_sentiment?: string | null
@@ -456,6 +458,7 @@ export type Database = {
           mood_tags?: string[] | null
           people_mentioned?: string[] | null
           processed_at?: string | null
+          pursuit_connections?: Json | null
           questions_raised?: string[] | null
           sentiment?: string | null
           source_sentiment?: string | null
@@ -508,12 +511,12 @@ export type Database = {
         }
         Relationships: []
       }
-      project_artifacts: {
+      pursuit_artifacts: {
         Row: {
           content: string
           created_at: string
           id: string
-          project_id: string
+          pursuit_id: string
           title: string
           type: string
           updated_at: string
@@ -523,7 +526,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
-          project_id: string
+          pursuit_id: string
           title: string
           type?: string
           updated_at?: string
@@ -533,7 +536,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
-          project_id?: string
+          pursuit_id?: string
           title?: string
           type?: string
           updated_at?: string
@@ -542,9 +545,9 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_artifacts_project_id_fkey"
-            columns: ["project_id"]
+            columns: ["pursuit_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "pursuits"
             referencedColumns: ["id"]
           },
           {
@@ -556,12 +559,12 @@ export type Database = {
           },
         ]
       }
-      project_conversations: {
+      pursuit_conversations: {
         Row: {
           content: string
           created_at: string
           id: string
-          project_id: string
+          pursuit_id: string
           role: string
           user_id: string
         }
@@ -569,7 +572,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
-          project_id: string
+          pursuit_id: string
           role: string
           user_id: string
         }
@@ -577,16 +580,16 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
-          project_id?: string
+          pursuit_id?: string
           role?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "project_conversations_project_id_fkey"
-            columns: ["project_id"]
+            columns: ["pursuit_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "pursuits"
             referencedColumns: ["id"]
           },
           {
@@ -598,9 +601,11 @@ export type Database = {
           },
         ]
       }
-      projects: {
+      pursuits: {
         Row: {
           color: string | null
+          core_question: string | null
+          core_question_embedding: string | null
           created_at: string
           description: string | null
           id: string
@@ -616,6 +621,8 @@ export type Database = {
         }
         Insert: {
           color?: string | null
+          core_question?: string | null
+          core_question_embedding?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -631,6 +638,8 @@ export type Database = {
         }
         Update: {
           color?: string | null
+          core_question?: string | null
+          core_question_embedding?: string | null
           created_at?: string
           description?: string | null
           id?: string

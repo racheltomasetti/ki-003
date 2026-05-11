@@ -31,8 +31,8 @@ export async function getCaptures(client: SupabaseClient, options: GetCapturesOp
         tag_id,
         tags (id, name)
       ),
-      capture_projects (
-        project_id
+      capture_pursuits (
+        pursuit_id
       )
     `)
     .neq('status', 'deleted')

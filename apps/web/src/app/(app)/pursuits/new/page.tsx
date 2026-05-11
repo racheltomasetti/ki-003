@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { createProject } from '@ki/services'
-import type { ProjectMode } from '@ki/types'
+import { createPursuit } from '@ki/services'
+import type { PursuitMode } from '@ki/types'
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
@@ -41,16 +41,16 @@ const STEPS = [
     type: 'textarea',
   },
   {
-    key: 'project_mode',
-    question: 'What kind of project is this?',
+    key: 'pursuit_mode',
+    question: 'What kind of pursuit is this?',
     hint: 'Pick the one that fits best.',
     required: false,
     type: 'chips',
     options: [
-      { value: 'building', label: 'Building something' },
+      { value: 'building', label: 'Building' },
       { value: 'researching', label: 'Researching' },
-      { value: 'figuring_out', label: 'Figuring something out' },
-      { value: 'creating', label: 'Creating something' },
+      { value: 'figuring_out', label: 'Figuring out' },
+      { value: 'creating', label: 'Creating' },
     ],
   },
 ] as const
@@ -63,12 +63,12 @@ type Answers = {
   why: string
   success_looks_like: string
   open_question: string
-  project_mode: ProjectMode | ''
+  pursuit_mode: PursuitMode | ''
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function NewProjectPage() {
+export default function NewPursuitPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Answers>({
@@ -77,7 +77,7 @@ export default function NewProjectPage() {
     why: '',
     success_looks_like: '',
     open_question: '',
-    project_mode: '',
+    pursuit_mode: '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -134,26 +134,27 @@ export default function NewProjectPage() {
       if (!user) throw new Error('Not authenticated')
 
       const { data: existing } = await supabase
-        .from('projects')
+        .from('pursuits')
         .select('id')
         .eq('user_id', user.id)
         .eq('status', 'active')
       if ((existing ?? []).length >= 3) {
-        setError('You have 3 active projects. Archive one to create a new one.')
+        setError('You have 3 active pursuits. Archive one to create a new one.')
         setSubmitting(false)
         return
       }
 
-      const project = await createProject(supabase, user.id, {
+      const pursuit = await createPursuit(supabase, user.id, {
         name: answers.name.trim(),
         what: answers.what.trim() || undefined,
         why: answers.why.trim() || undefined,
         success_looks_like: answers.success_looks_like.trim() || undefined,
         open_question: answers.open_question.trim() || undefined,
-        project_mode: answers.project_mode || undefined,
+        pursuit_mode: answers.pursuit_mode || undefined,
+        status: 'active',
       })
 
-      router.push(`/projects/${project.id}`)
+      router.push(`/pursuits/${pursuit.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setSubmitting(false)
@@ -166,13 +167,13 @@ export default function NewProjectPage() {
       {/* Top bar */}
       <div className="flex items-center justify-between px-8 py-6">
         <button
-          onClick={() => step === 0 ? router.push('/projects') : setStep((s) => s - 1)}
+          onClick={() => step === 0 ? router.push('/home') : setStep((s) => s - 1)}
           className="flex items-center gap-2 font-sans text-sm text-charcoal/40 dark:text-cream/40 hover:text-charcoal dark:hover:text-cream transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
           </svg>
-          {step === 0 ? 'Projects' : 'Back'}
+          {step === 0 ? 'Home' : 'Back'}
         </button>
 
         {/* Step dots */}
@@ -268,18 +269,18 @@ export default function NewProjectPage() {
             />
           )}
 
-          {/* Chips — project mode */}
+          {/* Chips — pursuit mode */}
           {current.type === 'chips' && 'options' in current && (
             <div className="flex flex-wrap gap-3">
               {current.options.map((opt) => {
-                const selected = answers.project_mode === opt.value
+                const selected = answers.pursuit_mode === opt.value
                 return (
                   <button
                     key={opt.value}
                     onClick={() =>
                       setAnswers((prev) => ({
                         ...prev,
-                        project_mode: selected ? '' : opt.value as ProjectMode,
+                        pursuit_mode: selected ? '' : opt.value as PursuitMode,
                       }))
                     }
                     className={[
@@ -327,7 +328,7 @@ export default function NewProjectPage() {
                     : 'bg-charcoal/10 dark:bg-cream/10 text-charcoal/30 dark:text-cream/30 cursor-not-allowed',
                 ].join(' ')}
               >
-                {submitting ? 'Creating…' : isLast ? 'Create project' : 'Continue'}
+                {submitting ? 'Creating…' : isLast ? 'Create pursuit' : 'Continue'}
                 {!submitting && (
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />

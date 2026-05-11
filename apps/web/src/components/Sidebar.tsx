@@ -6,10 +6,10 @@ import { usePathname, useRouter } from 'next/navigation'
 import { LuLibrary } from 'react-icons/lu'
 import { HiMiniHome } from "react-icons/hi2";
 import { IoCompassOutline } from 'react-icons/io5'
-import type { Project, Profile } from '@ki/types'
+import type { Pursuit, Profile } from '@ki/types'
 
 interface SidebarProps {
-  projects: Project[]
+  pursuits: Pursuit[]
   profile: Profile | null
   userEmail: string | null
 }
@@ -20,7 +20,7 @@ const NAV: { href: string; label: string; Icon: React.ComponentType<{ className?
   { href: '/explore', label: 'Explore', Icon: IoCompassOutline },
 ]
 
-export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
+export function Sidebar({ pursuits, profile, userEmail }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -85,16 +85,16 @@ export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
 
         {/* Projects section */}
         <div className="px-5 mt-3 mb-[3px] text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em]">
-          Projects
+          Pursuits
         </div>
 
-        {projects.map((project) => {
-          const active = pathname.startsWith(`/projects/${project.id}`)
-          const color = project.color ?? '#9e9b96'
+        {pursuits.map((pursuit) => {
+          const active = pathname.startsWith(`/pursuits/${pursuit.id}`)
+          const color = pursuit.color ?? '#9e9b96'
           return (
             <Link
-              key={project.id}
-              href={`/projects/${project.id}`}
+              key={pursuit.id}
+              href={`/pursuits/${pursuit.id}`}
               className={[
                 'grid grid-cols-[30px_1fr] items-center gap-[9px] px-5 py-[5px] text-[12px] border-l-2 transition-all duration-150',
                 active
@@ -106,18 +106,18 @@ export function Sidebar({ projects, profile, userEmail }: SidebarProps) {
               <span className="w-[30px] flex justify-center">
                 <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ backgroundColor: color }} />
               </span>
-              <span className="truncate">{project.name}</span>
+              <span className="truncate">{pursuit.name}</span>
             </Link>
           )
         })}
 
-        {projects.length < 3 && (
+        {pursuits.length < 3 && (
           <Link
-            href="/projects/new"
+            href="/pursuits/new"
             className="grid grid-cols-[30px_1fr] items-center gap-[9px] px-5 py-[5px] text-[11px] text-charcoal/30 dark:text-[#5c5a57] mt-[2px] hover:text-terra dark:hover:text-terra transition-colors"
           >
             <span className="w-[30px] flex justify-center text-[14px]">+</span>
-            <span>new project</span>
+            <span>new pursuit</span>
           </Link>
         )}
 

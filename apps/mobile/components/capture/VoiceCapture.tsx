@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { uploadMedia } from '@ki/services'
 import { useCreateCapture, useAddTagToCapture } from '@/hooks/useCaptures'
-import { useAddCaptureToProject } from '@/hooks/useProjects'
+import { useAddCaptureToPursuit } from '@/hooks/useProjects'
 import { Waveform, BAR_COUNT, normalizeDb, simulatedAmplitude } from './Waveform'
 import { ReviewCapture } from './ReviewCapture'
 import { ThemedLogo } from './ThemedLogo'
@@ -69,7 +69,7 @@ export function VoiceCapture({ onComplete }: VoiceCaptureProps = {}) {
   const { session } = useAuthStore()
   const createCapture = useCreateCapture()
   const addTagToCapture = useAddTagToCapture()
-  const addCaptureToProject = useAddCaptureToProject()
+  const addCaptureToPursuit = useAddCaptureToPursuit()
 
   const [captureState, setCaptureState] = useState<CaptureState>('idle')
   const [elapsed, setElapsed] = useState(0)
@@ -223,8 +223,8 @@ export function VoiceCapture({ onComplete }: VoiceCaptureProps = {}) {
       await addTagToCapture.mutateAsync({ captureId: capture.id, tagId })
     }
 
-    for (const projectId of projectIds) {
-      await addCaptureToProject.mutateAsync({ captureId: capture.id, projectId })
+    for (const pursuitId of projectIds) {
+      await addCaptureToPursuit.mutateAsync({ captureId: capture.id, pursuitId })
     }
 
     if (audioUriRef.current) {

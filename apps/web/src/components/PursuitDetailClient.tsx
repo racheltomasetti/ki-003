@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { IoMdSettings } from 'react-icons/io'
 import { createClient } from '@/lib/supabase/client'
-import { addProjectMessage } from '@ki/services'
-import type { Project, CaptureWithEnrichment, ProjectConversation } from '@ki/types'
+import { addPursuitMessage } from '@ki/services'
+import type { Pursuit, CaptureWithEnrichment, PursuitConversation } from '@ki/types'
 
 // ─── Markdown renderer (paragraphs + bold, no dependency) ────────────────────
 
@@ -220,7 +220,7 @@ function ChatPanel({
   onSendMessage,
 }: {
   captureCount: number
-  messages: ProjectConversation[]
+  messages: PursuitConversation[]
   isThinking: boolean
   onSendMessage: (content: string) => void
 }) {
@@ -291,18 +291,18 @@ function ChatPanel({
             {messages.map(msg => (
               <div
                 key={msg.id}
-                className={['flex flex-col', msg.role === 'user' ? 'items-end' : 'items-start'].join(' ')}
+                className={['flex flex-col', msg.role === 'hero' ? 'items-end' : 'items-start'].join(' ')}
               >
                 <div className={[
                   'max-w-[85%] px-3 py-2.5 rounded-xl font-sans text-xs leading-relaxed',
-                  msg.role === 'user'
+                  msg.role === 'hero'
                     ? 'bg-terra text-cream rounded-br-sm'
                     : 'bg-charcoal/[0.06] dark:bg-white/[0.06] border border-charcoal/8 dark:border-white/7 text-charcoal dark:text-[#f0ede8] rounded-bl-sm',
                 ].join(' ')}>
-                  {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+                  {msg.role === 'ki' ? renderMarkdown(msg.content) : msg.content}
                 </div>
                 <span className="font-sans text-[9px] text-charcoal/25 dark:text-[#5c5a57] mt-1 px-1">
-                  {msg.role === 'user' ? 'you' : 'Ki'} · {relativeTime(msg.created_at)}
+                  {msg.role === 'hero' ? 'you' : 'Ki'} · {relativeTime(msg.created_at)}
                 </span>
               </div>
             ))}
@@ -345,7 +345,7 @@ function ChatPanel({
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Talk to Ki about this project…"
+            placeholder="Talk to Ki about this pursuit…"
             rows={1}
             disabled={isThinking}
             className="flex-1 bg-transparent border-none outline-none font-sans text-xs text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic resize-none leading-relaxed disabled:opacity-50"
@@ -374,9 +374,9 @@ function ChatPanel({
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  project: Project
+  pursuit: Pursuit
   captures: CaptureWithEnrichment[]
-  messages: ProjectConversation[]
+  messages: PursuitConversation[]
 }
 
 const MODE_COLORS: Record<string, string> = {
@@ -393,7 +393,7 @@ const MODE_LABELS: Record<string, string> = {
   figuring_out: 'figuring out',
 }
 
-export function ProjectDetailClient({ project, captures, messages: initialMessages }: Props) {
+export function PursuitDetailClient({ pursuit, captures, messages: initialMessages }: Props) {
   const supabase = createClient()
 
   const [panelOpen, setPanelOpen] = useState(true)
@@ -401,7 +401,7 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
-  const [messages, setMessages] = useState<ProjectConversation[]>(initialMessages)
+  const [messages, setMessages] = useState<PursuitConversation[]>(initialMessages)
   const [highlightedCaptureId, setHighlightedCaptureId] = useState<string | null>(null)
 
   const rawCaptures = captures
@@ -429,7 +429,7 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
           enrichment_profile: 'distilled',
           body: distillerContent.trim(),
           source_metadata: {
-            project_id: project.id,
+            pursuit_id: pursuit.id,
             distilled_at: new Date().toISOString(),
           },
         })
@@ -438,10 +438,10 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
 
       if (error || !capture) throw error
 
-      // Tag it to this project
+      // Tag it to this pursuit
       await supabase
-        .from('capture_projects')
-        .insert({ capture_id: capture.id, project_id: project.id, user_id: user.id })
+        .from('capture_pursuits')
+        .insert({ capture_id: capture.id, pursuit_id: pursuit.id, user_id: user.id })
 
       setDistillerContent('')
     } catch (err) {
@@ -456,11 +456,11 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
     setIsThinking(true)
 
     // Optimistic user message — temp ID so it renders immediately
-    const tempUserMsg: ProjectConversation = {
+    const tempUserMsg: PursuitConversation = {
       id: `temp-user-${Date.now()}`,
-      project_id: project.id,
+      pursuit_id: pursuit.id,
       user_id: '',
-      role: 'user',
+      role: 'hero',
       content,
       created_at: new Date().toISOString(),
     }
@@ -470,9 +470,9 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
       // Build conversation history for the agent (exclude the temp message)
       const history = messages.map(m => ({ role: m.role, content: m.content }))
 
-      const { data, error: fnError } = await supabase.functions.invoke('project-agent', {
+      const { data, error: fnError } = await supabase.functions.invoke('pursuit-agent', {
         body: {
-          project_id: project.id,
+          pursuit_id: pursuit.id,
           message: content,
           conversation_history: history,
         },
@@ -497,8 +497,8 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const [savedUser, savedKi] = await Promise.all([
-          addProjectMessage(supabase, project.id, user.id, 'user', content),
-          addProjectMessage(supabase, project.id, user.id, 'assistant', kiResponse),
+          addPursuitMessage(supabase, pursuit.id, user.id, 'hero', content),
+          addPursuitMessage(supabase, pursuit.id, user.id, 'ki', kiResponse),
         ])
 
         // Replace temp message + add Ki response with real DB rows
@@ -509,11 +509,11 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
         ])
       } else {
         // No user — still show Ki response in UI
-        const tempKiMsg: ProjectConversation = {
+        const tempKiMsg: PursuitConversation = {
           id: `temp-ki-${Date.now()}`,
-          project_id: project.id,
+          pursuit_id: pursuit.id,
           user_id: '',
-          role: 'assistant',
+          role: 'ki',
           content: kiResponse,
           created_at: new Date().toISOString(),
         }
@@ -527,7 +527,7 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
       }
 
     } catch (err) {
-      console.error('project-agent error:', err)
+      console.error('pursuit-agent error:', err)
       // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id))
     } finally {
@@ -540,8 +540,8 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
     setTimeout(() => setHighlightedCaptureId(null), 2000)
   }
 
-  const color = project.color ?? '#9e9b96'
-  const mode = project.project_mode
+  const color = pursuit.color ?? '#9e9b96'
+  const mode = pursuit.pursuit_mode
   const modeColor = mode ? MODE_COLORS[mode] : null
   const modeLabel = mode ? MODE_LABELS[mode] : null
 
@@ -552,7 +552,7 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
       <div className="flex items-center justify-between px-5 py-[10px] border-b border-charcoal/8 dark:border-white/7 shrink-0 bg-cream dark:bg-[#161514]">
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-          <span className="font-serif text-[15px] font-medium text-charcoal dark:text-[#f0ede8] truncate">{project.name}</span>
+          <span className="font-serif text-[15px] font-medium text-charcoal dark:text-[#f0ede8] truncate">{pursuit.name}</span>
           {modeLabel && modeColor && (
             <span
               className="text-[9px] font-medium px-2 py-[2px] rounded-full uppercase tracking-[0.06em] shrink-0"
@@ -563,7 +563,7 @@ export function ProjectDetailClient({ project, captures, messages: initialMessag
           )}
         </div>
         <Link
-          href={`/projects/${project.id}/settings`}
+          href={`/pursuits/${pursuit.id}/settings`}
           className="flex items-center justify-center shrink-0 p-1 -m-1 text-charcoal/40 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] transition-colors"
           aria-label="Project settings"
         >

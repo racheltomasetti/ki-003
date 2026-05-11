@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getProject, getCanvasNodes, getCanvasEdges } from '@ki/services'
+import { getPursuit, getCanvasNodes, getCanvasEdges } from '@ki/services'
 import { CanvasClient } from './CanvasClient'
-import type { Project, CanvasNode, CanvasEdge } from '@ki/types'
+import type { Pursuit, CanvasNode, CanvasEdge } from '@ki/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -21,7 +21,7 @@ export default async function CanvasPage({ params }: Props) {
     { data: edges },
   ] = await Promise.all([
     supabase.auth.getUser(),
-    getProject(supabase, id),
+    getPursuit(supabase, id),
     getCanvasNodes(supabase, id),
     getCanvasEdges(supabase, id),
   ])
@@ -32,7 +32,7 @@ export default async function CanvasPage({ params }: Props) {
     <CanvasClient
       projectId={id}
       userId={user.id}
-      projectName={(project as Project).name}
+      projectName={(project as Pursuit).name}
       initialNodes={(nodes ?? []) as CanvasNode[]}
       initialEdges={(edges ?? []) as CanvasEdge[]}
     />

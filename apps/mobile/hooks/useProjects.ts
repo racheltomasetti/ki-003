@@ -1,67 +1,67 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
-import { getProjects, createProject, addCaptureToProject, getProjectCaptures, removeCaptureFromProject } from '@ki/services'
-import type { Project, CaptureWithEnrichment } from '@ki/types'
+import { getActivePursuits, createPursuit, addCaptureToPursuit, getPursuitCaptures, removeCaptureFromPursuit } from '@ki/services'
+import type { Pursuit, CaptureWithEnrichment } from '@ki/types'
 
-export function useProjects() {
+export function usePursuits() {
   const { session } = useAuthStore()
 
   return useQuery({
-    queryKey: ['projects', session?.user.id],
+    queryKey: ['pursuits', session?.user.id],
     queryFn: async () => {
-      const { data, error } = await getProjects(supabase, session!.user.id)
+      const { data, error } = await getActivePursuits(supabase, session!.user.id)
       if (error) throw error
-      return data as Project[]
+      return data as Pursuit[]
     },
     enabled: !!session,
   })
 }
 
-export function useCreateProject() {
+export function useCreatePursuit() {
   const queryClient = useQueryClient()
   const { session } = useAuthStore()
 
   return useMutation({
     mutationFn: (data: { name: string; color?: string; description?: string }) =>
-      createProject(supabase, session!.user.id, data),
+      createPursuit(supabase, session!.user.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', session?.user.id] })
+      queryClient.invalidateQueries({ queryKey: ['pursuits', session?.user.id] })
     },
   })
 }
 
-export function useAddCaptureToProject() {
+export function useAddCaptureToPursuit() {
   const { session } = useAuthStore()
 
   return useMutation({
-    mutationFn: ({ captureId, projectId }: { captureId: string; projectId: string }) =>
-      addCaptureToProject(supabase, captureId, projectId, session!.user.id),
+    mutationFn: ({ captureId, pursuitId }: { captureId: string; pursuitId: string }) =>
+      addCaptureToPursuit(supabase, captureId, pursuitId, session!.user.id),
   })
 }
 
-export function useProjectCaptures(projectId: string) {
+export function usePursuitCaptures(pursuitId: string) {
   return useQuery({
-    queryKey: ['project-captures', projectId],
+    queryKey: ['pursuit-captures', pursuitId],
     queryFn: async () => {
-      const { data, error } = await getProjectCaptures(supabase, projectId)
+      const { data, error } = await getPursuitCaptures(supabase, pursuitId)
       if (error) throw error
       return (data ?? [])
         .map((row: { capture_id: string; captures: unknown }) => row.captures)
         .filter(Boolean) as CaptureWithEnrichment[]
     },
-    enabled: !!projectId,
+    enabled: !!pursuitId,
   })
 }
 
-export function useRemoveCaptureFromProject() {
+export function useRemoveCaptureFromPursuit() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ captureId, projectId }: { captureId: string; projectId: string }) =>
-      removeCaptureFromProject(supabase, captureId, projectId),
-    onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: ['project-captures', projectId] })
+    mutationFn: ({ captureId, pursuitId }: { captureId: string; pursuitId: string }) =>
+      removeCaptureFromPursuit(supabase, captureId, pursuitId),
+    onSuccess: (_data, { pursuitId }) => {
+      queryClient.invalidateQueries({ queryKey: ['pursuit-captures', pursuitId] })
     },
   })
 }

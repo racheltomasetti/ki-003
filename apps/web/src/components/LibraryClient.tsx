@@ -7,8 +7,8 @@ import {
   getCaptures,
   starCapture,
   updateCaptureTitle,
-  addCaptureToProject,
-  removeCaptureFromProject,
+  addCaptureToPursuit,
+  removeCaptureFromPursuit,
   addTagToCapture,
   removeTagFromCapture,
   createTag,
@@ -16,12 +16,12 @@ import {
 import { MdKeyboardVoice, MdOutlineSearch } from 'react-icons/md'
 import { FaPencil } from 'react-icons/fa6'
 import { IoAttach } from 'react-icons/io5'
-import type { Project, Tag, CaptureWithEnrichment } from '@ki/types'
+import type { Pursuit, Tag, CaptureWithEnrichment } from '@ki/types'
 
 // ─── Local type ───────────────────────────────────────────────────────────────
-// getCaptures now joins capture_projects (project_id only)
-type CaptureRow = Omit<CaptureWithEnrichment, 'capture_projects'> & {
-  capture_projects: { project_id: string }[]
+// getCaptures joins capture_pursuits (pursuit_id only)
+type CaptureRow = Omit<CaptureWithEnrichment, 'capture_pursuits'> & {
+  capture_pursuits: { pursuit_id: string }[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ function CaptureListItem({
 
 function CaptureDetailPanel({
   capture,
-  projects,
+  pursuits,
   allTags,
   userId,
   starred,
@@ -135,7 +135,7 @@ function CaptureDetailPanel({
   onTagCreated,
 }: {
   capture: CaptureRow
-  projects: Project[]
+  pursuits: Pursuit[]
   allTags: Tag[]
   userId: string
   starred: boolean
@@ -160,14 +160,14 @@ function CaptureDetailPanel({
   const [tagQuery, setTagQuery] = useState('')
   const tagInputRef = useRef<HTMLInputElement>(null)
 
-  // Project add dropdown
-  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false)
+  // Pursuit add dropdown
+  const [pursuitDropdownOpen, setPursuitDropdownOpen] = useState(false)
 
-  const captureProjectIds = new Set((capture.capture_projects ?? []).map(cp => cp.project_id))
+  const capturePursuitIds = new Set((capture.capture_pursuits ?? []).map(cp => cp.pursuit_id))
   const captureTags = capture.capture_tags ?? []
   const captureTagIds = new Set(captureTags.map(ct => ct.tag_id))
 
-  const availableProjects = projects.filter(p => !captureProjectIds.has(p.id))
+  const availablePursuits = pursuits.filter(p => !capturePursuitIds.has(p.id))
   const tagSuggestions = tagQuery.trim()
     ? allTags.filter(t => !captureTagIds.has(t.id) && t.name.includes(tagQuery.toLowerCase().trim()))
     : []
@@ -188,14 +188,14 @@ function CaptureDetailPanel({
     }
   }
 
-  const handleRemoveProject = async (projectId: string) => {
-    await removeCaptureFromProject(supabase, capture.id, projectId)
+  const handleRemovePursuit = async (pursuitId: string) => {
+    await removeCaptureFromPursuit(supabase, capture.id, pursuitId)
     invalidate()
   }
 
-  const handleAddProject = async (projectId: string) => {
-    setProjectDropdownOpen(false)
-    await addCaptureToProject(supabase, capture.id, projectId, userId)
+  const handleAddPursuit = async (pursuitId: string) => {
+    setPursuitDropdownOpen(false)
+    await addCaptureToPursuit(supabase, capture.id, pursuitId, userId)
     invalidate()
   }
 
@@ -342,15 +342,15 @@ function CaptureDetailPanel({
           </div>
         )}
 
-        {/* Projects */}
+        {/* Pursuits */}
         <div className="mb-5">
           <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-[10px]">
-            Projects
+            Pursuits
           </div>
           <div className="flex flex-wrap gap-2 items-center">
-            {Array.from(captureProjectIds).map(pid => {
-              const project = projects.find(p => p.id === pid)
-              if (!project) return null
+            {Array.from(capturePursuitIds).map(pid => {
+              const pursuit = pursuits.find(p => p.id === pid)
+              if (!pursuit) return null
               return (
                 <div
                   key={pid}
@@ -358,11 +358,11 @@ function CaptureDetailPanel({
                 >
                   <span
                     className="w-[5px] h-[5px] rounded-full shrink-0"
-                    style={{ backgroundColor: project.color ?? '#9e9b96' }}
+                    style={{ backgroundColor: pursuit.color ?? '#9e9b96' }}
                   />
-                  <span className="font-sans text-[11px] text-charcoal/60 dark:text-[#9e9b96]">{project.name}</span>
+                  <span className="font-sans text-[11px] text-charcoal/60 dark:text-[#9e9b96]">{pursuit.name}</span>
                   <button
-                    onClick={() => handleRemoveProject(pid)}
+                    onClick={() => handleRemovePursuit(pid)}
                     className="text-charcoal/25 dark:text-[#5c5a57] hover:text-terra transition-colors text-[13px] leading-none ml-[1px]"
                   >
                     ×
@@ -371,20 +371,20 @@ function CaptureDetailPanel({
               )
             })}
 
-            {availableProjects.length > 0 && (
+            {availablePursuits.length > 0 && (
               <div className="relative">
                 <button
-                  onClick={() => setProjectDropdownOpen(v => !v)}
+                  onClick={() => setPursuitDropdownOpen(v => !v)}
                   className="font-sans text-[11px] text-charcoal/30 dark:text-[#5c5a57] hover:text-terra transition-colors px-[9px] py-[4px] rounded-full border border-dashed border-charcoal/12 dark:border-white/[0.07] hover:border-terra/30"
                 >
                   + add
                 </button>
-                {projectDropdownOpen && (
+                {pursuitDropdownOpen && (
                   <div className="absolute top-full left-0 mt-[6px] bg-cream dark:bg-[#1d1b1a] border border-charcoal/12 dark:border-white/[0.08] rounded-[10px] py-1 shadow-lg z-10 min-w-[160px]">
-                    {availableProjects.map(p => (
+                    {availablePursuits.map(p => (
                       <button
                         key={p.id}
-                        onClick={() => handleAddProject(p.id)}
+                        onClick={() => handleAddPursuit(p.id)}
                         className="w-full text-left flex items-center gap-2 px-3 py-[7px] font-sans text-[12px] text-charcoal/60 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.04] dark:hover:bg-white/[0.04] transition-colors"
                       >
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color ?? '#9e9b96' }} />
@@ -396,9 +396,9 @@ function CaptureDetailPanel({
               </div>
             )}
 
-            {captureProjectIds.size === 0 && availableProjects.length === 0 && (
+            {capturePursuitIds.size === 0 && availablePursuits.length === 0 && (
               <span className="font-sans text-[11px] text-charcoal/20 dark:text-[#5c5a57] italic">
-                no projects yet
+                no pursuits yet
               </span>
             )}
           </div>
@@ -484,12 +484,12 @@ function CaptureDetailPanel({
 
 export function LibraryClient({
   userId,
-  projects,
+  pursuits,
   initialTags,
   initialSelectedId,
 }: {
   userId: string
-  projects: Project[]
+  pursuits: Pursuit[]
   initialTags: Tag[]
   initialSelectedId?: string | null
 }) {
@@ -498,7 +498,7 @@ export function LibraryClient({
 
   const [inputValue, setInputValue] = useState('')
   const [search, setSearch] = useState('')
-  const [projectFilter, setProjectFilter] = useState<string | null>(null)
+  const [pursuitFilter, setPursuitFilter] = useState<string | null>(null)
   const [tagFilters, setTagFilters] = useState<Set<string>>(new Set())
   const [starredOnly, setStarredOnly] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
@@ -558,7 +558,7 @@ export function LibraryClient({
 
   // Client-side filtering
   const filtered = (captures ?? []).filter(c => {
-    if (projectFilter && !(c.capture_projects ?? []).some(cp => cp.project_id === projectFilter)) return false
+    if (pursuitFilter && !(c.capture_pursuits ?? []).some(cp => cp.pursuit_id === pursuitFilter)) return false
     if (tagFilters.size > 0) {
       const ids = new Set((c.capture_tags ?? []).map(ct => ct.tag_id))
       for (const tid of tagFilters) {
@@ -623,15 +623,15 @@ export function LibraryClient({
             />
           </div>
 
-          {/* Project dropdown + starred */}
+          {/* Pursuit dropdown + starred */}
           <div className="flex items-center gap-[6px]">
             <select
-              value={projectFilter ?? ''}
-              onChange={e => setProjectFilter(e.target.value || null)}
+              value={pursuitFilter ?? ''}
+              onChange={e => setPursuitFilter(e.target.value || null)}
               className="flex-1 bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[8px] px-3 py-[6px] font-sans text-[11px] text-charcoal dark:text-[#f0ede8] outline-none cursor-pointer"
             >
-              <option value="">All projects</option>
-              {projects.map(p => (
+              <option value="">All pursuits</option>
+              {pursuits.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
@@ -717,7 +717,7 @@ export function LibraryClient({
           <CaptureDetailPanel
             key={selectedCapture.id}
             capture={selectedCapture}
-            projects={projects}
+            pursuits={pursuits}
             allTags={tags}
             userId={userId}
             starred={localStarred.has(selectedCapture.id) ? localStarred.get(selectedCapture.id)! : selectedCapture.is_starred}

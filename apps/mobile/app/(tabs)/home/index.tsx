@@ -7,14 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useAppTheme } from '@/hooks/useAppTheme'
-import { useProjects, useCreateProject } from '@/hooks/useProjects'
+import { usePursuits, useCreatePursuit } from '@/hooks/useProjects'
 
 const PROJECT_COLORS = ['#9e2a2b', '#58a4b0', '#67934d', '#efcb68', '#8b5e83', '#c97d4e']
 
 export default function HomeScreen() {
   const { colors } = useAppTheme()
-  const { data: projects, isLoading } = useProjects()
-  const createProject = useCreateProject()
+  const { data: projects, isLoading } = usePursuits()
+  const createProject = useCreatePursuit()
 
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')

@@ -16,9 +16,9 @@ import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { getTags, createTag } from '@ki/services'
-import type { Tag, Project } from '@ki/types'
+import type { Tag, Pursuit } from '@ki/types'
 import { useAppTheme } from '@/hooks/useAppTheme'
-import { useProjects } from '@/hooks/useProjects'
+import { usePursuits } from '@/hooks/useProjects'
 
 const MAX_IMAGES = 4
 
@@ -57,7 +57,7 @@ export function ReviewCapture({
   const [showTagInput, setShowTagInput] = useState(false)
   const [mediaUris, setMediaUris] = useState<string[]>([])
 
-  const { data: projects } = useProjects()
+  const { data: projects } = usePursuits()
 
   const fg = colors.foreground
   const fgMuted = colors.foregroundMuted
@@ -193,7 +193,7 @@ export function ReviewCapture({
               Projects
             </Text>
             <View style={styles.tagRow}>
-              {projects.map((project: Project) => {
+              {projects.map((project: Pursuit) => {
                 const active = selectedProjectIds.includes(project.id)
                 return (
                   <TouchableOpacity

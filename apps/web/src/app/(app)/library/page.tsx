@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { getProjects, getTags } from '@ki/services'
+import { getActivePursuits, getTags } from '@ki/services'
 import { LibraryClient } from '@/components/LibraryClient'
-import type { Project, Tag } from '@ki/types'
+import type { Pursuit, Tag } from '@ki/types'
 
 export default async function LibraryPage({
   searchParams,
@@ -12,15 +12,15 @@ export default async function LibraryPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [{ data: projects }, { data: tags }] = await Promise.all([
-    getProjects(supabase, user.id),
+  const [{ data: pursuits }, { data: tags }] = await Promise.all([
+    getActivePursuits(supabase, user.id),
     getTags(supabase, user.id),
   ])
 
   return (
     <LibraryClient
       userId={user.id}
-      projects={(projects ?? []) as Project[]}
+      pursuits={(pursuits ?? []) as Pursuit[]}
       initialTags={(tags ?? []) as Tag[]}
       initialSelectedId={
         typeof searchParams?.captureId === 'string'

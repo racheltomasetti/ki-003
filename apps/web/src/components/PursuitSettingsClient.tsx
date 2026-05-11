@@ -4,8 +4,8 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { updateProject, archiveProject, deleteProject } from '@ki/services'
-import type { Project, ProjectMode } from '@ki/types'
+import { updatePursuit, archivePursuit, deletePursuit } from '@ki/services'
+import type { Pursuit, PursuitMode } from '@ki/types'
 
 type Tab = 'details' | 'appearance' | 'management'
 
@@ -22,7 +22,7 @@ const ACCENT_COLORS = [
   { label: 'Sage',    value: '#67934d' },
 ]
 
-const MODE_OPTIONS: { value: ProjectMode; label: string }[] = [
+const MODE_OPTIONS: { value: PursuitMode; label: string }[] = [
   { value: 'building',     label: 'Building' },
   { value: 'researching',  label: 'Researching' },
   { value: 'figuring_out', label: 'Figuring out' },
@@ -31,19 +31,19 @@ const MODE_OPTIONS: { value: ProjectMode; label: string }[] = [
 
 // ─── Details tab (name, brief fields, mode) ───────────────────────────────────
 
-function DetailsTab({ project }: { project: Project }) {
+function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
   const supabase = createClient()
 
   type DraftKey = 'name' | 'what' | 'why' | 'success_looks_like' | 'open_question'
-  type Draft = Record<DraftKey, string> & { project_mode: ProjectMode | '' }
+  type Draft = Record<DraftKey, string> & { pursuit_mode: PursuitMode | '' }
 
   const initialRef = useRef<Draft>({
-    name: project.name,
-    what: project.what ?? '',
-    why: project.why ?? '',
-    success_looks_like: project.success_looks_like ?? '',
-    open_question: project.open_question ?? '',
-    project_mode: project.project_mode ?? '',
+    name: pursuit.name,
+    what: pursuit.what ?? '',
+    why: pursuit.why ?? '',
+    success_looks_like: pursuit.success_looks_like ?? '',
+    open_question: pursuit.open_question ?? '',
+    pursuit_mode: pursuit.pursuit_mode ?? '',
   })
 
   const [draft, setDraft] = useState<Draft>({ ...initialRef.current })
@@ -58,13 +58,13 @@ function DetailsTab({ project }: { project: Project }) {
     setSaving(true)
     setSaveError(null)
     try {
-      await updateProject(supabase, project.id, {
+      await updatePursuit(supabase, pursuit.id, {
         name: draft.name.trim(),
         what: draft.what.trim() || null,
         why: draft.why.trim() || null,
         success_looks_like: draft.success_looks_like.trim() || null,
         open_question: draft.open_question.trim() || null,
-        project_mode: draft.project_mode || null,
+        pursuit_mode: draft.pursuit_mode || null,
       })
       initialRef.current = { ...draft, name: draft.name.trim() }
       setSaved(true)
@@ -77,7 +77,7 @@ function DetailsTab({ project }: { project: Project }) {
   }
 
   const FIELDS: { key: DraftKey; label: string; hint?: string; type: 'input' | 'textarea' }[] = [
-    { key: 'name',             label: 'Project name',                      type: 'input' },
+    { key: 'name',             label: 'Pursuit name',                      type: 'input' },
     { key: 'what',             label: 'What are you building?',            type: 'textarea' },
     { key: 'why',              label: 'Why are you building this?',        type: 'textarea' },
     { key: 'success_looks_like', label: 'What does success look like?',   type: 'textarea', hint: 'Be concrete — what would you see, feel, or ship?' },
@@ -89,7 +89,7 @@ function DetailsTab({ project }: { project: Project }) {
   return (
     <div className="px-7 py-[26px] max-w-[620px]">
       <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.08em] mb-5">
-        Project details
+        Pursuit details
       </div>
 
       <div className="space-y-5 mb-7">
@@ -120,20 +120,20 @@ function DetailsTab({ project }: { project: Project }) {
           </div>
         ))}
 
-        {/* Project mode */}
+        {/* Pursuit mode */}
         <div>
           <label className="block text-[11px] font-medium text-charcoal/50 dark:text-[#5c5a57] uppercase tracking-[0.07em] mb-[8px]">
-            Project mode
+            Pursuit mode
           </label>
           <div className="flex flex-wrap gap-2">
             {MODE_OPTIONS.map(({ value, label }) => {
-              const selected = draft.project_mode === value
+              const selected = draft.pursuit_mode === value
               return (
                 <button
                   key={value}
                   onClick={() => setDraft(prev => ({
                     ...prev,
-                    project_mode: selected ? '' : value,
+                    pursuit_mode: selected ? '' : value,
                   }))}
                   className={[
                     'px-4 py-[7px] rounded-[10px] border font-sans text-[12px] font-medium transition-all',
@@ -172,9 +172,9 @@ function DetailsTab({ project }: { project: Project }) {
 
 // ─── Appearance tab ───────────────────────────────────────────────────────────
 
-function AppearanceTab({ project }: { project: Project }) {
+function AppearanceTab({ pursuit }: { pursuit: Pursuit }) {
   const supabase = createClient()
-  const [color, setColor] = useState(project.color ?? '#9e2a2b')
+  const [color, setColor] = useState(pursuit.color ?? '#9e2a2b')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -183,7 +183,7 @@ function AppearanceTab({ project }: { project: Project }) {
     setColor(value)
     setSaving(true)
     try {
-      await updateProject(supabase, project.id, { color: value })
+      await updatePursuit(supabase, pursuit.id, { color: value })
       setSaved(true)
       setTimeout(() => setSaved(false), 1500)
     } catch {
@@ -201,9 +201,9 @@ function AppearanceTab({ project }: { project: Project }) {
 
       <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 py-5">
         <div className="mb-5">
-          <div className="text-[13px] font-medium text-charcoal dark:text-[#f0ede8] mb-[4px]">Project color</div>
+          <div className="text-[13px] font-medium text-charcoal dark:text-[#f0ede8] mb-[4px]">Pursuit color</div>
           <div className="text-[11px] text-charcoal/40 dark:text-[#5c5a57] leading-relaxed">
-            Shows as the color dot across the app — sidebar, home widget, project header.
+            Shows as the color dot across the app — sidebar, home widget, pursuit header.
           </div>
         </div>
 
@@ -252,7 +252,7 @@ function AppearanceTab({ project }: { project: Project }) {
 
 // ─── Management tab (archive / delete) ────────────────────────────────────────
 
-function ManagementTab({ project }: { project: Project }) {
+function ManagementTab({ pursuit }: { pursuit: Pursuit }) {
   const supabase = createClient()
   const router = useRouter()
 
@@ -268,7 +268,7 @@ function ManagementTab({ project }: { project: Project }) {
     if (archiving) return
     setArchiving(true)
     try {
-      await archiveProject(supabase, project.id)
+      await archivePursuit(supabase, pursuit.id)
       router.push('/home')
     } catch {
       setArchiving(false)
@@ -277,11 +277,11 @@ function ManagementTab({ project }: { project: Project }) {
   }
 
   const handleDelete = async () => {
-    if (deleting || deleteInput !== project.name) return
+    if (deleting || deleteInput !== pursuit.name) return
     setDeleting(true)
     setDeleteError(null)
     try {
-      await deleteProject(supabase, project.id)
+      await deletePursuit(supabase, pursuit.id)
       router.push('/home')
     } catch {
       setDeleteError('Something went wrong. Try again.')
@@ -298,17 +298,17 @@ function ManagementTab({ project }: { project: Project }) {
       {/* Archive */}
       <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 py-5 mb-4">
         <div className="mb-4">
-          <div className="text-[13px] font-medium text-charcoal dark:text-[#f0ede8] mb-[4px]">Archive project</div>
+          <div className="text-[13px] font-medium text-charcoal dark:text-[#f0ede8] mb-[4px]">Archive pursuit</div>
           <div className="text-[11px] text-charcoal/40 dark:text-[#5c5a57] leading-relaxed">
-            Frees up a slot for a new project. Your captures, brief, and conversations are all preserved.
-            Access archived projects from your profile.
+            Frees up a slot for a new pursuit. Your captures, brief, and conversations are all preserved.
+            Access archived pursuits from your profile.
           </div>
         </div>
 
         {archiveConfirm ? (
           <div className="flex items-center gap-3">
             <span className="font-sans text-[12px] text-charcoal/50 dark:text-[#9e9b96]">
-              Archive <span className="font-medium text-charcoal dark:text-[#f0ede8]">{project.name}</span>?
+              Archive <span className="font-medium text-charcoal dark:text-[#f0ede8]">{pursuit.name}</span>?
             </span>
             <button
               onClick={handleArchive}
@@ -329,7 +329,7 @@ function ManagementTab({ project }: { project: Project }) {
             onClick={() => setArchiveConfirm(true)}
             className="px-4 py-[7px] rounded-[10px] border border-charcoal/12 dark:border-white/[0.08] font-sans text-[12px] font-medium text-charcoal/60 dark:text-[#9e9b96] hover:border-charcoal/20 dark:hover:border-white/[0.15] hover:text-charcoal dark:hover:text-[#f0ede8] transition-all"
           >
-            Archive project
+            Archive pursuit
           </button>
         )}
       </div>
@@ -339,35 +339,35 @@ function ManagementTab({ project }: { project: Project }) {
         <div className="mb-4">
           <div className="text-[13px] font-medium text-charcoal dark:text-[#f0ede8] mb-[4px]">Delete permanently</div>
           <div className="text-[11px] text-charcoal/40 dark:text-[#5c5a57] leading-relaxed">
-            This cannot be undone. All project conversations and artifacts will be deleted.
-            Captures assigned to this project will not be affected.
+            This cannot be undone. All pursuit conversations and artifacts will be deleted.
+            Captures assigned to this pursuit will not be affected.
           </div>
         </div>
 
         {deleteOpen ? (
           <div className="space-y-3">
             <label className="block font-sans text-[11px] text-charcoal/50 dark:text-[#5c5a57]">
-              Type <span className="font-medium text-charcoal dark:text-[#f0ede8]">{project.name}</span> to confirm
+              Type <span className="font-medium text-charcoal dark:text-[#f0ede8]">{pursuit.name}</span> to confirm
             </label>
             <input
               type="text"
               value={deleteInput}
               onChange={e => setDeleteInput(e.target.value)}
-              placeholder={project.name}
+              placeholder={pursuit.name}
               className="w-full bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/10 dark:border-white/[0.08] rounded-[10px] px-4 py-[9px] font-sans text-[13px] text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/20 dark:placeholder:text-[#5c5a57] outline-none focus:border-charcoal/20 dark:focus:border-white/[0.15] transition-colors"
             />
             <div className="flex items-center gap-3">
               <button
                 onClick={handleDelete}
-                disabled={deleteInput !== project.name || deleting}
+                disabled={deleteInput !== pursuit.name || deleting}
                 className={[
                   'px-4 py-[7px] rounded-[10px] font-sans text-[12px] font-semibold transition-all',
-                  deleteInput === project.name && !deleting
+                  deleteInput === pursuit.name && !deleting
                     ? 'bg-terra text-cream hover:bg-terra/90'
                     : 'bg-charcoal/8 dark:bg-white/5 text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
                 ].join(' ')}
               >
-                {deleting ? 'deleting…' : 'Delete project'}
+                {deleting ? 'deleting…' : 'Delete pursuit'}
               </button>
               <button
                 onClick={() => { setDeleteOpen(false); setDeleteInput(''); setDeleteError(null) }}
@@ -385,7 +385,7 @@ function ManagementTab({ project }: { project: Project }) {
             onClick={() => setDeleteOpen(true)}
             className="px-4 py-[7px] rounded-[10px] border border-charcoal/12 dark:border-white/[0.08] font-sans text-[12px] font-medium text-charcoal/60 dark:text-[#9e9b96] hover:border-charcoal/20 dark:hover:border-white/[0.15] hover:text-charcoal dark:hover:text-[#f0ede8] transition-all"
           >
-            Delete project
+            Delete pursuit
           </button>
         )}
       </div>
@@ -395,7 +395,7 @@ function ManagementTab({ project }: { project: Project }) {
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
-export function ProjectSettingsClient({ project }: { project: Project }) {
+export function PursuitSettingsClient({ pursuit }: { pursuit: Pursuit }) {
   const [tab, setTab] = useState<Tab>('details')
 
   return (
@@ -406,16 +406,16 @@ export function ProjectSettingsClient({ project }: { project: Project }) {
 
         <div className="px-5 pt-5 pb-2">
           <Link
-            href={`/projects/${project.id}`}
+            href={`/pursuits/${pursuit.id}`}
             className="inline-flex items-center justify-center text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors mb-[14px]"
-            aria-label="Back to project"
+            aria-label="Back to pursuit"
           >
             <svg className="size-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
           </Link>
           <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em]">
-            Project settings
+            Pursuit settings
           </div>
         </div>
 
@@ -440,9 +440,9 @@ export function ProjectSettingsClient({ project }: { project: Project }) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {tab === 'details'    && <DetailsTab    project={project} />}
-        {tab === 'appearance' && <AppearanceTab project={project} />}
-        {tab === 'management' && <ManagementTab project={project} />}
+        {tab === 'details'    && <DetailsTab    pursuit={pursuit} />}
+        {tab === 'appearance' && <AppearanceTab pursuit={pursuit} />}
+        {tab === 'management' && <ManagementTab pursuit={pursuit} />}
       </div>
 
     </div>
