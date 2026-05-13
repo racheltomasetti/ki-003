@@ -611,7 +611,7 @@ export type Database = {
           id: string
           name: string
           open_question: string | null
-          project_mode: string | null
+          pursuit_mode: string | null
           status: string
           success_looks_like: string | null
           updated_at: string
@@ -628,7 +628,7 @@ export type Database = {
           id?: string
           name: string
           open_question?: string | null
-          project_mode?: string | null
+          pursuit_mode?: string | null
           status?: string
           success_looks_like?: string | null
           updated_at?: string
@@ -645,7 +645,7 @@ export type Database = {
           id?: string
           name?: string
           open_question?: string | null
-          project_mode?: string | null
+          pursuit_mode?: string | null
           status?: string
           success_looks_like?: string | null
           updated_at?: string

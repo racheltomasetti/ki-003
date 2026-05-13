@@ -6,15 +6,16 @@ import type { Pursuit, Tag } from '@ki/types'
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams?: { captureId?: string | string[] }
+  searchParams?: Promise<{ captureId?: string | string[] }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [{ data: pursuits }, { data: tags }] = await Promise.all([
+  const [{ data: pursuits }, { data: tags }, resolvedParams] = await Promise.all([
     getActivePursuits(supabase, user.id),
     getTags(supabase, user.id),
+    searchParams ?? Promise.resolve({} as { captureId?: string | string[] }),
   ])
 
   return (
@@ -23,8 +24,8 @@ export default async function LibraryPage({
       pursuits={(pursuits ?? []) as Pursuit[]}
       initialTags={(tags ?? []) as Tag[]}
       initialSelectedId={
-        typeof searchParams?.captureId === 'string'
-          ? searchParams.captureId
+        typeof resolvedParams.captureId === 'string'
+          ? resolvedParams.captureId
           : null
       }
     />

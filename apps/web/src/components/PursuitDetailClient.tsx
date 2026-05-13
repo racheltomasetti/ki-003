@@ -2,18 +2,28 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 import { IoMdSettings } from 'react-icons/io'
 import { createClient } from '@/lib/supabase/client'
 import { addPursuitMessage } from '@ki/services'
 import type { Pursuit, CaptureWithEnrichment, PursuitConversation } from '@ki/types'
 
-// ─── Markdown renderer (paragraphs + bold, no dependency) ────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Citation {
+  id: string
+  title: string | null
+  captured_at: string
+  quote?: string
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function renderMarkdown(text: string): React.ReactNode {
   return text.split('\n\n').map((para, i) => {
     const parts = para.split(/(\*\*[^*]+\*\*)/)
     return (
-      <p key={i} className="mb-2 last:mb-0 whitespace-pre-wrap">
+      <p key={i} className="mb-2 last:mb-0">
         {parts.map((part, j) =>
           part.startsWith('**') && part.endsWith('**')
             ? <strong key={j}>{part.slice(2, -2)}</strong>
@@ -23,8 +33,6 @@ function renderMarkdown(text: string): React.ReactNode {
     )
   })
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function relativeTime(dateStr: string): string {
   const date = new Date(dateStr)
@@ -41,19 +49,103 @@ function relativeTime(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-// ─── Left panel: Captures ─────────────────────────────────────────────────────
+function highlightText(body: string, quote: string | null): React.ReactNode {
+  if (!quote) return body
+  const idx = body.toLowerCase().indexOf(quote.toLowerCase())
+  if (idx === -1) return body
+  return (
+    <>
+      {body.slice(0, idx)}
+      <mark className="bg-ray/40 dark:bg-ray/25 text-charcoal dark:text-[#f0ede8] rounded-sm px-0.5 not-italic">
+        {body.slice(idx, idx + quote.length)}
+      </mark>
+      {body.slice(idx + quote.length)}
+    </>
+  )
+}
 
-function CapturesPanel({
+// ─── Corpus Panel ─────────────────────────────────────────────────────────────
+
+function CorpusPanel({
   captures,
-  highlightedId,
-  onHighlight,
+  selectedId,
+  highlightQuote,
+  onSelect,
+  onBack,
 }: {
   captures: CaptureWithEnrichment[]
-  highlightedId: string | null
-  onHighlight: (id: string) => void
+  selectedId: string | null
+  highlightQuote: string | null
+  onSelect: (id: string, quote?: string) => void
+  onBack: () => void
 }) {
   const [search, setSearch] = useState('')
+  const selected = captures.find(c => c.id === selectedId) ?? null
 
+  // Detail view
+  if (selected) {
+    const enrichment = Array.isArray(selected.enrichments)
+      ? selected.enrichments[0]
+      : selected.enrichments
+
+    return (
+      <div className="flex flex-col h-full bg-cream dark:bg-[#161514]">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
+          <button
+            onClick={onBack}
+            className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors"
+          >
+            ← corpus
+          </button>
+          <span className="text-charcoal/15 dark:text-[#3a3835]">·</span>
+          <span className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57]">
+            {relativeTime(selected.captured_at)}
+          </span>
+          {selected.is_starred && <span className="text-[10px] text-ray">★</span>}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          <div className="font-serif text-sm text-charcoal dark:text-[#f0ede8] leading-relaxed whitespace-pre-wrap">
+            {highlightText(selected.body ?? '', highlightQuote)}
+          </div>
+
+          {(enrichment?.summary || (enrichment?.themes && (enrichment.themes as string[]).length > 0)) && (
+            <div className="border-t border-charcoal/8 dark:border-white/7 pt-4 space-y-3">
+              {enrichment?.summary && (
+                <div>
+                  <p className="font-sans text-[9px] font-medium uppercase tracking-widest text-charcoal/35 dark:text-[#5c5a57] mb-1.5">
+                    Summary
+                  </p>
+                  <p className="font-sans text-xs text-charcoal/55 dark:text-[#9e9b96] leading-relaxed">
+                    {enrichment.summary}
+                  </p>
+                </div>
+              )}
+              {enrichment?.themes && (enrichment.themes as string[]).length > 0 && (
+                <div>
+                  <p className="font-sans text-[9px] font-medium uppercase tracking-widest text-charcoal/35 dark:text-[#5c5a57] mb-1.5">
+                    Themes
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(enrichment.themes as string[]).map((t: string) => (
+                      <span
+                        key={t}
+                        className="font-sans text-[10px] px-2 py-0.5 rounded-full bg-charcoal/5 dark:bg-white/5 border border-charcoal/8 dark:border-white/7 text-charcoal/50 dark:text-[#9e9b96]"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // List view
   const filtered = search.trim()
     ? captures.filter(c =>
         (c.title ?? '').toLowerCase().includes(search.toLowerCase()) ||
@@ -62,10 +154,10 @@ function CapturesPanel({
     : captures
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-cream dark:bg-[#161514]">
       <div className="flex items-center justify-between px-4 py-3 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
         <span className="font-sans text-xs font-medium text-charcoal/60 dark:text-[#9e9b96]">
-          Captures
+          Corpus
           <span className="ml-1.5 text-charcoal/35 dark:text-[#5c5a57]">({captures.length})</span>
         </span>
       </div>
@@ -74,7 +166,7 @@ function CapturesPanel({
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="search captures…"
+          placeholder="search…"
           className="w-full bg-charcoal/5 dark:bg-white/5 rounded-lg px-3 py-1.5 font-sans text-xs text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] outline-none border border-transparent focus:border-charcoal/15 dark:focus:border-white/10 transition-colors"
         />
       </div>
@@ -88,30 +180,20 @@ function CapturesPanel({
           </p>
         ) : (
           filtered.map(c => {
-            const lit = c.id === highlightedId
-            const label = c.title ?? (c.body ?? '').slice(0, 48) ?? 'Untitled'
+            const label = c.title ?? (c.body ?? '').slice(0, 60)
             const meta = [
               c.source_type === 'voice' ? 'voice' : c.source_type === 'file' ? 'file' : 'text',
               relativeTime(c.captured_at),
-              c.is_starred ? '★' : null,
-            ].filter(Boolean).join(' · ')
+            ].join(' · ')
 
             return (
               <button
                 key={c.id}
-                onClick={() => onHighlight(c.id)}
-                className={[
-                  'w-full text-left px-3 py-2.5 rounded-lg mb-1 transition-all duration-200 border',
-                  lit
-                    ? 'border-terra/40 bg-terra/8 dark:bg-terra/10 animate-pulse-glow'
-                    : 'border-transparent bg-charcoal/[0.03] dark:bg-white/[0.04] hover:border-charcoal/10 dark:hover:border-white/10',
-                ].join(' ')}
+                onClick={() => onSelect(c.id)}
+                className="w-full text-left px-3 py-2.5 rounded-lg mb-1 border border-transparent bg-charcoal/[0.03] dark:bg-white/[0.04] hover:border-charcoal/10 dark:hover:border-white/10 transition-all duration-150"
               >
-                <p className={[
-                  'font-sans text-xs font-medium leading-snug truncate mb-0.5',
-                  lit ? 'text-terra' : 'text-charcoal dark:text-[#f0ede8]',
-                ].join(' ')}>
-                  {label}
+                <p className="font-sans text-xs font-medium leading-snug line-clamp-2 mb-0.5 text-charcoal dark:text-[#f0ede8]">
+                  {label}{c.is_starred ? ' ★' : ''}
                 </p>
                 <p className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57]">{meta}</p>
               </button>
@@ -123,106 +205,26 @@ function CapturesPanel({
   )
 }
 
-// ─── Center: Thought distiller ────────────────────────────────────────────────
-
-function ThoughtDistiller({
-  content,
-  onChange,
-  onCopy,
-  onSave,
-  copied,
-  saving,
-  panelOpen,
-  onOpenPanel,
-}: {
-  content: string
-  onChange: (v: string) => void
-  onCopy: () => void
-  onSave: () => void
-  copied: boolean
-  saving: boolean
-  panelOpen: boolean
-  onOpenPanel: () => void
-}) {
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          {!panelOpen && (
-            <button
-              onClick={onOpenPanel}
-              className="flex items-center justify-center w-5 h-5 rounded border border-charcoal/15 dark:border-white/10 text-charcoal/40 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors text-[10px]"
-              title="Show captures"
-            >
-              ▸
-            </button>
-          )}
-          <span className="font-sans text-[10px] font-semibold text-charcoal/45 dark:text-[#5c5a57] uppercase tracking-widest">
-            Thought distiller
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onChange('')}
-            className="font-sans text-xs text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors px-2 py-1 rounded border border-charcoal/10 dark:border-white/7 hover:border-charcoal/20 dark:hover:border-white/13"
-          >
-            clear
-          </button>
-          <button
-            onClick={onSave}
-            disabled={!content.trim() || saving}
-            className={[
-              'font-sans text-xs font-medium px-3 py-1 rounded-lg border transition-all',
-              content.trim() && !saving
-                ? 'border-charcoal/20 dark:border-white/13 text-charcoal/60 dark:text-[#9e9b96] hover:border-charcoal/35 dark:hover:border-white/20 hover:text-charcoal dark:hover:text-[#f0ede8]'
-                : 'border-charcoal/8 dark:border-white/5 text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
-            ].join(' ')}
-          >
-            {saving ? 'saving…' : 'save to Ki'}
-          </button>
-          <button
-            onClick={onCopy}
-            disabled={!content.trim()}
-            className={[
-              'flex items-center gap-1.5 font-sans text-xs font-semibold px-4 py-1 rounded-lg transition-all',
-              content.trim()
-                ? copied
-                  ? 'bg-sage text-cream'
-                  : 'bg-terra text-cream hover:bg-terra/90'
-                : 'bg-charcoal/8 dark:bg-white/5 text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
-            ].join(' ')}
-          >
-            {copied ? '✓ copied' : <>copy <span className="text-[11px]">⎘</span></>}
-          </button>
-        </div>
-      </div>
-
-      {/* Textarea — fills remaining space */}
-      <div className="flex-1 px-5 py-4 overflow-hidden">
-        <textarea
-          value={content}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Ki will help shape your thinking here as you converse. You can also write directly — edit, refine, build on it together."
-          className="w-full h-full bg-transparent border-none outline-none font-serif text-sm text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/25 dark:placeholder:text-[#5c5a57] placeholder:italic resize-none leading-relaxed"
-        />
-      </div>
-    </div>
-  )
-}
-
-// ─── Right panel: Ki chat ─────────────────────────────────────────────────────
+// ─── Chat Panel ───────────────────────────────────────────────────────────────
 
 function ChatPanel({
   captureCount,
   messages,
+  messageCitations,
   isThinking,
+  savingMessageId,
   onSendMessage,
+  onSaveMessage,
+  onCitationClick,
 }: {
   captureCount: number
   messages: PursuitConversation[]
+  messageCitations: Map<string, Citation[]>
   isThinking: boolean
+  savingMessageId: string | null
   onSendMessage: (content: string) => void
+  onSaveMessage: (messageId: string, content: string) => void
+  onCitationClick: (captureId: string, quote?: string) => void
 }) {
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -261,7 +263,7 @@ function ChatPanel({
   ]
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-cream dark:bg-[#0f0e0e]">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
         <div>
@@ -275,39 +277,76 @@ function ChatPanel({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2.5">
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
         {messages.length === 0 && !isThinking ? (
           <div className="flex-1 flex items-center justify-center px-4">
-            <div className="max-w-[220px] text-center">
-              <p className="font-serif text-sm font-light text-charcoal/50 dark:text-[#9e9b96] leading-relaxed italic">
-                {captureCount > 0
-                  ? `${captureCount} capture${captureCount !== 1 ? 's' : ''} in context. Ask me anything.`
-                  : 'No captures yet. Add some on mobile, then come back to distill your thinking.'}
-              </p>
-            </div>
+            <p className="max-w-[260px] text-center font-serif text-sm font-light text-charcoal/50 dark:text-[#9e9b96] leading-relaxed italic">
+              {captureCount > 0
+                ? `${captureCount} capture${captureCount !== 1 ? 's' : ''} in context. Ask me anything.`
+                : 'No captures yet. Add some on mobile, then come back to distill your thinking.'}
+            </p>
           </div>
         ) : (
           <>
-            {messages.map(msg => (
-              <div
-                key={msg.id}
-                className={['flex flex-col', msg.role === 'hero' ? 'items-end' : 'items-start'].join(' ')}
-              >
-                <div className={[
-                  'max-w-[85%] px-3 py-2.5 rounded-xl font-sans text-xs leading-relaxed',
-                  msg.role === 'hero'
-                    ? 'bg-terra text-cream rounded-br-sm'
-                    : 'bg-charcoal/[0.06] dark:bg-white/[0.06] border border-charcoal/8 dark:border-white/7 text-charcoal dark:text-[#f0ede8] rounded-bl-sm',
-                ].join(' ')}>
-                  {msg.role === 'ki' ? renderMarkdown(msg.content) : msg.content}
-                </div>
-                <span className="font-sans text-[9px] text-charcoal/25 dark:text-[#5c5a57] mt-1 px-1">
-                  {msg.role === 'hero' ? 'you' : 'Ki'} · {relativeTime(msg.created_at)}
-                </span>
-              </div>
-            ))}
+            {messages.map(msg => {
+              if (msg.role === 'hero') {
+                return (
+                  <div key={msg.id} className="flex flex-col items-end">
+                    <div className="max-w-[85%] px-3 py-2.5 rounded-xl rounded-br-sm bg-terra text-cream font-sans text-xs leading-relaxed">
+                      {msg.content}
+                    </div>
+                    <span className="font-sans text-[9px] text-charcoal/25 dark:text-[#5c5a57] mt-1 px-1">
+                      you · {relativeTime(msg.created_at)}
+                    </span>
+                  </div>
+                )
+              }
 
-            {/* Thinking indicator */}
+              const citations = messageCitations.get(msg.id)
+              const isSaving = savingMessageId === msg.id
+
+              return (
+                <div key={msg.id} className="flex flex-col items-start group">
+                  <div className="max-w-[90%] px-3 py-2.5 rounded-xl rounded-bl-sm bg-charcoal/[0.06] dark:bg-white/[0.06] border border-charcoal/8 dark:border-white/7 text-charcoal dark:text-[#f0ede8] font-sans text-xs leading-relaxed">
+                    {renderMarkdown(msg.content)}
+                  </div>
+
+                  {/* Timestamp + save */}
+                  <div className="flex items-center gap-3 mt-1 px-1">
+                    <span className="font-sans text-[9px] text-charcoal/25 dark:text-[#5c5a57]">
+                      Ki · {relativeTime(msg.created_at)}
+                    </span>
+                    <button
+                      onClick={() => onSaveMessage(msg.id, msg.content)}
+                      disabled={isSaving}
+                      className="font-sans text-[9px] text-charcoal/30 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-40"
+                    >
+                      {isSaving ? 'saving…' : 'save to Ki'}
+                    </button>
+                  </div>
+
+                  {/* Citation chips */}
+                  {citations && citations.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2 px-1">
+                      {citations.map(c => (
+                        <button
+                          key={c.id}
+                          onClick={() => onCitationClick(c.id, c.quote)}
+                          title={c.quote ?? undefined}
+                          className="flex items-center gap-1.5 font-sans text-[10px] px-2 py-0.5 rounded-full border border-charcoal/12 dark:border-white/8 text-charcoal/45 dark:text-[#5c5a57] hover:border-terra/40 hover:text-terra dark:hover:text-terra dark:hover:border-terra/40 transition-all bg-transparent"
+                        >
+                          <span className="w-1 h-1 rounded-full bg-current flex-shrink-0" />
+                          <span className="max-w-[160px] truncate">
+                            {c.title ?? (c.quote ? `"${c.quote.slice(0, 32)}…"` : 'capture')}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
             {isThinking && (
               <div className="flex flex-col items-start">
                 <div className="px-3 py-2.5 rounded-xl rounded-bl-sm bg-charcoal/[0.06] dark:bg-white/[0.06] border border-charcoal/8 dark:border-white/7">
@@ -325,8 +364,8 @@ function ChatPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area */}
-      <div className="flex-shrink-0 px-3 pb-3 border-t border-charcoal/8 dark:border-white/7 pt-3">
+      {/* Input */}
+      <div className="flex-shrink-0 px-4 pb-4 border-t border-charcoal/8 dark:border-white/7 pt-3">
         <div className="flex flex-wrap gap-1.5 mb-2.5">
           {suggestions.map(s => (
             <button
@@ -396,26 +435,25 @@ const MODE_LABELS: Record<string, string> = {
 export function PursuitDetailClient({ pursuit, captures, messages: initialMessages }: Props) {
   const supabase = createClient()
 
-  const [panelOpen, setPanelOpen] = useState(true)
-  const [distillerContent, setDistillerContent] = useState('')
-  const [copied, setCopied] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [isThinking, setIsThinking] = useState(false)
   const [messages, setMessages] = useState<PursuitConversation[]>(initialMessages)
-  const [highlightedCaptureId, setHighlightedCaptureId] = useState<string | null>(null)
+  const [messageCitations, setMessageCitations] = useState<Map<string, Citation[]>>(new Map())
+  const [selectedCaptureId, setSelectedCaptureId] = useState<string | null>(null)
+  const [highlightQuote, setHighlightQuote] = useState<string | null>(null)
+  const [isThinking, setIsThinking] = useState(false)
+  const [savingMessageId, setSavingMessageId] = useState<string | null>(null)
 
-  const rawCaptures = captures
-
-  const handleCopy = async () => {
-    if (!distillerContent.trim()) return
-    await navigator.clipboard.writeText(distillerContent)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleSelectCapture = (id: string, quote?: string) => {
+    setSelectedCaptureId(id)
+    setHighlightQuote(quote ?? null)
   }
 
-  const handleSave = async () => {
-    if (!distillerContent.trim() || saving) return
-    setSaving(true)
+  const handleBack = () => {
+    setSelectedCaptureId(null)
+    setHighlightQuote(null)
+  }
+
+  const handleSaveMessage = async (messageId: string, content: string) => {
+    setSavingMessageId(messageId)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -426,28 +464,23 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
           user_id: user.id,
           type: 'text',
           source_type: 'distilled',
-          enrichment_profile: 'distilled',
-          body: distillerContent.trim(),
-          source_metadata: {
-            pursuit_id: pursuit.id,
-            distilled_at: new Date().toISOString(),
-          },
+          enrichment_profile: 'personal',
+          body: content,
+          captured_at: new Date().toISOString(),
         })
         .select()
         .single()
 
-      if (error || !capture) throw error
+      if (error || !capture) throw error ?? new Error('Insert failed')
 
-      // Tag it to this pursuit
       await supabase
         .from('capture_pursuits')
         .insert({ capture_id: capture.id, pursuit_id: pursuit.id, user_id: user.id })
 
-      setDistillerContent('')
     } catch (err) {
-      console.error('save to Ki error:', err)
+      console.error('save message error:', err)
     } finally {
-      setSaving(false)
+      setSavingMessageId(null)
     }
   }
 
@@ -455,7 +488,6 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
     if (isThinking) return
     setIsThinking(true)
 
-    // Optimistic user message — temp ID so it renders immediately
     const tempUserMsg: PursuitConversation = {
       id: `temp-user-${Date.now()}`,
       pursuit_id: pursuit.id,
@@ -467,33 +499,17 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
     setMessages(prev => [...prev, tempUserMsg])
 
     try {
-      // Build conversation history for the agent (exclude the temp message)
       const history = messages.map(m => ({ role: m.role, content: m.content }))
 
       const { data, error: fnError } = await supabase.functions.invoke('pursuit-agent', {
-        body: {
-          pursuit_id: pursuit.id,
-          message: content,
-          conversation_history: history,
-        },
+        body: { pursuit_id: pursuit.id, message: content, conversation_history: history },
       })
 
       if (fnError) throw fnError
 
-      const agentData = data as {
-        response: string
-        distilled_text?: string
-        citations?: Array<{ id: string; title: string | null; captured_at: string }>
-      }
-
+      const agentData = data as { response: string; citations?: Citation[] }
       const kiResponse = agentData.response ?? 'Something went wrong. Please try again.'
 
-      // Populate thought distiller if Ki proposed a distillation
-      if (agentData.distilled_text?.trim()) {
-        setDistillerContent(agentData.distilled_text.trim())
-      }
-
-      // Persist both messages to DB (fire and update local state with real IDs)
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const [savedUser, savedKi] = await Promise.all([
@@ -501,14 +517,16 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
           addPursuitMessage(supabase, pursuit.id, user.id, 'ki', kiResponse),
         ])
 
-        // Replace temp message + add Ki response with real DB rows
         setMessages(prev => [
           ...prev.filter(m => m.id !== tempUserMsg.id),
           savedUser,
           savedKi,
         ])
+
+        if (agentData.citations?.length) {
+          setMessageCitations(prev => new Map(prev).set(savedKi.id, agentData.citations!))
+        }
       } else {
-        // No user — still show Ki response in UI
         const tempKiMsg: PursuitConversation = {
           id: `temp-ki-${Date.now()}`,
           pursuit_id: pursuit.id,
@@ -518,26 +536,18 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
           created_at: new Date().toISOString(),
         }
         setMessages(prev => [...prev, tempKiMsg])
-      }
 
-      // Highlight referenced captures briefly
-      if (agentData.citations?.length) {
-        setHighlightedCaptureId(agentData.citations[0].id)
-        setTimeout(() => setHighlightedCaptureId(null), 2000)
+        if (agentData.citations?.length) {
+          setMessageCitations(prev => new Map(prev).set(tempKiMsg.id, agentData.citations!))
+        }
       }
 
     } catch (err) {
       console.error('pursuit-agent error:', err)
-      // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id))
     } finally {
       setIsThinking(false)
     }
-  }
-
-  const handleHighlight = (captureId: string) => {
-    setHighlightedCaptureId(captureId)
-    setTimeout(() => setHighlightedCaptureId(null), 2000)
   }
 
   const color = pursuit.color ?? '#9e9b96'
@@ -548,7 +558,7 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
-      {/* Project header */}
+      {/* Header */}
       <div className="flex items-center justify-between px-5 py-[10px] border-b border-charcoal/8 dark:border-white/7 shrink-0 bg-cream dark:bg-[#161514]">
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
@@ -565,62 +575,45 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
         <Link
           href={`/pursuits/${pursuit.id}/settings`}
           className="flex items-center justify-center shrink-0 p-1 -m-1 text-charcoal/40 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] transition-colors"
-          aria-label="Project settings"
+          aria-label="Pursuit settings"
         >
           <IoMdSettings className="size-[18px]" aria-hidden />
         </Link>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      {/* Resizable panels */}
+      <div className="flex-1 min-h-0">
+        <PanelGroup
+          direction="horizontal"
+          autoSaveId={`pursuit-workspace-${pursuit.id}`}
+          className="h-full"
+        >
+          <Panel defaultSize={35} minSize={20} maxSize={55} className="overflow-hidden">
+            <CorpusPanel
+              captures={captures}
+              selectedId={selectedCaptureId}
+              highlightQuote={highlightQuote}
+              onSelect={handleSelectCapture}
+              onBack={handleBack}
+            />
+          </Panel>
 
-      {/* LEFT: Captures panel */}
-      <div
-        className={[
-          'flex-shrink-0 border-r border-charcoal/8 dark:border-white/7 bg-cream dark:bg-[#161514] transition-all duration-200',
-          panelOpen ? 'w-[260px]' : 'w-0 overflow-hidden',
-        ].join(' ')}
-      >
-        <div className="w-[260px] h-full flex flex-col relative">
-          <button
-            onClick={() => setPanelOpen(false)}
-            className="absolute top-3 right-3 z-10 flex items-center justify-center w-5 h-5 rounded border border-charcoal/12 dark:border-white/8 text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors text-[10px]"
-            title="Collapse captures"
-          >
-            ◂
-          </button>
-          <CapturesPanel
-            captures={rawCaptures}
-            highlightedId={highlightedCaptureId}
-            onHighlight={handleHighlight}
-          />
-        </div>
+          <PanelResizeHandle className="w-1.5 flex-shrink-0 bg-charcoal/8 dark:bg-white/7 hover:bg-terra/30 data-[resize-handle-active]:bg-terra/50 transition-colors cursor-col-resize" />
+
+          <Panel defaultSize={65} minSize={35} className="overflow-hidden">
+            <ChatPanel
+              captureCount={captures.length}
+              messages={messages}
+              messageCitations={messageCitations}
+              isThinking={isThinking}
+              savingMessageId={savingMessageId}
+              onSendMessage={handleSendMessage}
+              onSaveMessage={handleSaveMessage}
+              onCitationClick={handleSelectCapture}
+            />
+          </Panel>
+        </PanelGroup>
       </div>
-
-      {/* CENTER: Thought distiller */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-cream dark:bg-[#0f0e0e]">
-        <ThoughtDistiller
-          content={distillerContent}
-          onChange={setDistillerContent}
-          onCopy={handleCopy}
-          onSave={handleSave}
-          copied={copied}
-          saving={saving}
-          panelOpen={panelOpen}
-          onOpenPanel={() => setPanelOpen(true)}
-        />
-      </div>
-
-      {/* RIGHT: Ki chat */}
-      <div className="w-[320px] flex-shrink-0 border-l border-charcoal/8 dark:border-white/7 bg-cream dark:bg-[#161514]">
-        <ChatPanel
-          captureCount={rawCaptures.length}
-          messages={messages}
-          isThinking={isThinking}
-          onSendMessage={handleSendMessage}
-        />
-      </div>
-
-      </div>{/* end panels row */}
     </div>
   )
 }
