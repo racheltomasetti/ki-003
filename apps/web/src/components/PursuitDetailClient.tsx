@@ -19,16 +19,254 @@ interface Citation {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function renderMarkdown(text: string): React.ReactNode {
-  return text.split('\n\n').map((para, i) => {
-    const parts = para.split(/(\*\*[^*]+\*\*)/)
+const CAPTURE_QUOTE_SERIF =
+  'font-serif text-[12px] font-light italic text-charcoal/70 dark:text-[#9e9b96]'
+
+const CAPTURE_QUOTE_BLOCK =
+  `${CAPTURE_QUOTE_SERIF} block pl-3 ml-0.5 my-2 border-l-2 border-charcoal/12 dark:border-white/10`
+
+const BOLD_QUOTE_AT_START = /^\*\*("([^"]+)"|\u201C([^\u201D]+)\u201D)\*\*/
+/** Ki often wraps verbatim lines as *"…"* (single asterisk italic) */
+const ITALIC_QUOTE_AT_START = /^\*("([^"]+)"|\u201C([^\u201D]+)\u201D)\*/
+const PLAIN_QUOTE_AT_START = /^("([^"]+)"|\u201C([^\u201D]+)\u201D)/
+const BOLD_AT_START = /^\*\*([^*]+)\*\*/
+const STANDALONE_ITALIC_QUOTE = /^\s*\*("([^"]+)"|\u201C([^\u201D]+)\u201D)\*\s*$/
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function norm(s: string): string {
+  return s.trim().toLowerCase()
+}
+
+function matchesTitle(inner: string, captureTitles: string[]): boolean {
+  const n = norm(inner)
+  return captureTitles.some(t => norm(t) === n)
+}
+
+function matchesKnownQuote(inner: string, knownQuotes: string[]): boolean {
+  const n = norm(inner)
+  return knownQuotes.some(q => norm(q) === n || n.includes(norm(q)) || norm(q).includes(n))
+}
+
+/** e.g. May 9, "capture title": — quoted label before a colon is a title, not a verbatim quote */
+function isTitleReference(inner: string, after: string, captureTitles: string[]): boolean {
+  if (matchesTitle(inner, captureTitles)) return true
+  const rest = after.trimStart()
+  return rest.startsWith(':') && inner.length <= 120
+}
+
+function classifyQuoted(inner: string, after: string, knownQuotes: string[], captureTitles: string[]): 'title' | 'quote' {
+  if (isTitleReference(inner, after, captureTitles)) return 'title'
+  if (matchesKnownQuote(inner, knownQuotes)) return 'quote'
+  if (after.trimStart().startsWith(':')) return 'title'
+  return 'quote'
+}
+
+function preprocessAgentMarkdown(text: string, captureTitles: string[]): string {
+  let s = text
+  const titles = [...captureTitles].filter(t => t.trim().length > 0).sort((a, b) => b.length - a.length)
+  for (const title of titles) {
+    const esc = escapeRegExp(title)
+    s = s.replace(new RegExp(`\\*\\*"${esc}"\\*\\*`, 'gi'), title)
+    s = s.replace(new RegExp(`\\*\\*\u201C${esc}\u201D\\*\\*`, 'gi'), title)
+    s = s.replace(new RegExp(`\\*"${esc}"\\*`, 'gi'), title)
+    s = s.replace(new RegExp(`\\*\u201C${esc}\u201D\\*`, 'gi'), title)
+    s = s.replace(new RegExp(`"${esc}"`, 'g'), title)
+    s = s.replace(new RegExp(`\u201C${esc}\u201D`, 'g'), title)
+  }
+  return s
+}
+
+type InlineToken =
+  | { kind: 'text'; value: string }
+  | { kind: 'bold'; value: string }
+  | { kind: 'title'; value: string }
+  | { kind: 'quote'; value: string }
+
+function tokenizeInline(
+  text: string,
+  knownQuotes: string[],
+  captureTitles: string[],
+): InlineToken[] {
+  const tokens: InlineToken[] = []
+  const sortedKnown = [...knownQuotes].filter(q => q.trim().length > 0).sort((a, b) => b.length - a.length)
+  let i = 0
+
+  while (i < text.length) {
+    const rest = text.slice(i)
+
+    let matchedKnown = false
+    for (const known of sortedKnown) {
+      const variants = [
+        `*"${known}"*`,
+        `*\u201C${known}\u201D*`,
+        `**"${known}"**`,
+        `**\u201C${known}\u201D**`,
+        `"${known}"`,
+        `\u201C${known}\u201D`,
+        known,
+      ]
+      for (const variant of variants.sort((a, b) => b.length - a.length)) {
+        if (rest.toLowerCase().startsWith(variant.toLowerCase())) {
+          tokens.push({ kind: 'quote', value: known })
+          i += variant.length
+          matchedKnown = true
+          break
+        }
+      }
+      if (matchedKnown) break
+    }
+    if (matchedKnown) continue
+
+    const italicQuote = rest.match(ITALIC_QUOTE_AT_START)
+    if (italicQuote) {
+      const inner = italicQuote[1] ?? italicQuote[2] ?? ''
+      const after = rest.slice(italicQuote[0].length)
+      const kind = classifyQuoted(inner, after, knownQuotes, captureTitles)
+      tokens.push({ kind: kind === 'title' ? 'title' : 'quote', value: inner })
+      i += italicQuote[0].length
+      continue
+    }
+
+    const boldQuote = rest.match(BOLD_QUOTE_AT_START)
+    if (boldQuote) {
+      const inner = boldQuote[1] ?? boldQuote[2] ?? ''
+      const after = rest.slice(boldQuote[0].length)
+      const kind = classifyQuoted(inner, after, knownQuotes, captureTitles)
+      tokens.push({ kind: kind === 'title' ? 'title' : 'quote', value: inner })
+      i += boldQuote[0].length
+      continue
+    }
+
+    const plainQuote = rest.match(PLAIN_QUOTE_AT_START)
+    if (plainQuote) {
+      const inner = plainQuote[1] ?? plainQuote[2] ?? ''
+      const after = rest.slice(plainQuote[0].length)
+      const kind = classifyQuoted(inner, after, knownQuotes, captureTitles)
+      tokens.push({ kind: kind === 'title' ? 'title' : 'quote', value: inner })
+      i += plainQuote[0].length
+      continue
+    }
+
+    const bold = rest.match(BOLD_AT_START)
+    if (bold) {
+      tokens.push({ kind: 'bold', value: bold[1] })
+      i += bold[0].length
+      continue
+    }
+
+    const nextSpecial = (() => {
+      let singleStar = -1
+      for (let j = 0; j < rest.length; j++) {
+        if (rest[j] === '*' && rest[j + 1] !== '*' && (j === 0 || rest[j - 1] !== '*')) {
+          singleStar = j
+          break
+        }
+      }
+      const indices = [
+        rest.indexOf('**'),
+        singleStar,
+        rest.indexOf('"'),
+        rest.indexOf('\u201C'),
+      ].filter(n => n >= 0)
+      return indices.length > 0 ? Math.min(...indices) : rest.length
+    })()
+
+    if (nextSpecial === 0) {
+      tokens.push({ kind: 'text', value: text[i] })
+      i += 1
+      continue
+    }
+
+    tokens.push({ kind: 'text', value: rest.slice(0, nextSpecial) })
+    i += nextSpecial
+  }
+
+  return tokens
+}
+
+function renderInlineWithQuotes(
+  text: string,
+  knownQuotes: string[],
+  captureTitles: string[],
+  keyPrefix: string,
+): React.ReactNode {
+  const tokens = tokenizeInline(text, knownQuotes, captureTitles)
+  return tokens.map((tok, j) => {
+    switch (tok.kind) {
+      case 'quote':
+        return (
+          <span key={`${keyPrefix}-q-${j}`} className={CAPTURE_QUOTE_SERIF}>
+            {tok.value}
+          </span>
+        )
+      case 'title':
+        return (
+          <span key={`${keyPrefix}-ttl-${j}`} className={CAPTURE_QUOTE_SERIF}>
+            {tok.value}
+          </span>
+        )
+      case 'bold':
+        return <strong key={`${keyPrefix}-b-${j}`}>{tok.value}</strong>
+      case 'text':
+        return <span key={`${keyPrefix}-t-${j}`}>{tok.value}</span>
+    }
+  })
+}
+
+function renderMarkdown(
+  text: string,
+  citationQuotes: string[] = [],
+  captureTitles: string[] = [],
+): React.ReactNode {
+  const normalized = preprocessAgentMarkdown(text, captureTitles)
+
+  return normalized.split('\n\n').map((para, i) => {
+    const trimmed = para.trim()
+    const lines = para.split('\n')
+    const isBlockquote = lines.length > 0 && lines.every(l => l.trim().startsWith('>'))
+
+    const standaloneItalic = trimmed.match(STANDALONE_ITALIC_QUOTE)
+    if (standaloneItalic) {
+      const inner = standaloneItalic[1] ?? standaloneItalic[2] ?? ''
+      return (
+        <blockquote
+          key={i}
+          className={`${CAPTURE_QUOTE_BLOCK} last:mb-0 whitespace-pre-wrap`}
+        >
+          {inner}
+        </blockquote>
+      )
+    }
+
+    if (isBlockquote) {
+      let quoteBody = lines
+        .map(l => l.replace(/^>\s?/, ''))
+        .join('\n')
+        .trim()
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+      if (
+        (quoteBody.startsWith('"') && quoteBody.endsWith('"')) ||
+        (quoteBody.startsWith('\u201C') && quoteBody.endsWith('\u201D'))
+      ) {
+        quoteBody = quoteBody.slice(1, -1)
+      }
+      return (
+        <blockquote
+          key={i}
+          className={`${CAPTURE_QUOTE_BLOCK} last:mb-0 whitespace-pre-wrap`}
+        >
+          {quoteBody}
+        </blockquote>
+      )
+    }
+
     return (
       <p key={i} className="mb-2 last:mb-0">
-        {parts.map((part, j) =>
-          part.startsWith('**') && part.endsWith('**')
-            ? <strong key={j}>{part.slice(2, -2)}</strong>
-            : part
-        )}
+        {renderInlineWithQuotes(para, citationQuotes, captureTitles, `p${i}`)}
       </p>
     )
   })
@@ -209,6 +447,7 @@ function CorpusPanel({
 
 function ChatPanel({
   captureCount,
+  corpusTitles,
   messages,
   messageCitations,
   isThinking,
@@ -218,6 +457,7 @@ function ChatPanel({
   onCitationClick,
 }: {
   captureCount: number
+  corpusTitles: string[]
   messages: PursuitConversation[]
   messageCitations: Map<string, Citation[]>
   isThinking: boolean
@@ -308,7 +548,14 @@ function ChatPanel({
               return (
                 <div key={msg.id} className="flex flex-col items-start group">
                   <div className="max-w-[90%] px-3 py-2.5 rounded-xl rounded-bl-sm bg-charcoal/[0.06] dark:bg-white/[0.06] border border-charcoal/8 dark:border-white/7 text-charcoal dark:text-[#f0ede8] font-sans text-xs leading-relaxed">
-                    {renderMarkdown(msg.content)}
+                    {renderMarkdown(
+                      msg.content,
+                      citations?.map(c => c.quote).filter((q): q is string => Boolean(q)) ?? [],
+                      [
+                        ...corpusTitles,
+                        ...(citations?.map(c => c.title).filter((t): t is string => Boolean(t)) ?? []),
+                      ],
+                    )}
                   </div>
 
                   {/* Timestamp + save */}
@@ -337,7 +584,7 @@ function ChatPanel({
                         >
                           <span className="w-1 h-1 rounded-full bg-current flex-shrink-0" />
                           <span className="max-w-[160px] truncate">
-                            {c.title ?? (c.quote ? `"${c.quote.slice(0, 32)}…"` : 'capture')}
+                            {c.title ?? (c.quote ? `${c.quote.slice(0, 32)}…` : 'capture')}
                           </span>
                         </button>
                       ))}
@@ -603,6 +850,7 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
           <Panel defaultSize={65} minSize={35} className="overflow-hidden">
             <ChatPanel
               captureCount={captures.length}
+              corpusTitles={captures.map(c => c.title).filter((t): t is string => Boolean(t?.trim()))}
               messages={messages}
               messageCitations={messageCitations}
               isThinking={isThinking}

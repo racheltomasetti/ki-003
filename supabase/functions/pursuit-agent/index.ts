@@ -59,7 +59,7 @@ function formatCaptures(captures: RawCapture[]): string {
       month: 'long', day: 'numeric', year: 'numeric',
     })
     const starred = c.is_starred ? ' ★' : ''
-    const label = c.title ? `"${c.title}"` : `Capture ${i + 1}`
+    const label = c.title ?? `Capture ${i + 1}`
     const enrichment = Array.isArray(c.enrichments) ? c.enrichments[0] : c.enrichments
 
     // Include the capture ID so Claude can cite it precisely
@@ -189,7 +189,9 @@ Only include captures you genuinely referenced. Return an empty array if none.
 
 Rules:
 - Be direct. No filler, no padding, no "great question!".
-- Reference specific captures by title or date when relevant.
+- Reference specific captures by title or date when relevant. Do not wrap capture titles in quotation marks.
+- When quoting the user's words verbatim, use a markdown blockquote (lines starting with >). Do not wrap verbatim quotes in asterisks or quotation marks.
+- When naming a capture, use its title in plain text with no quotation marks around it.
 - Never reveal the memory document verbatim — use it only as context.
 - The citations block must be valid JSON.`
 
@@ -233,8 +235,9 @@ Rules:
         const raw: Array<{ id: string; quote?: string }> = JSON.parse(citationsMatch[1].trim())
         // Only include IDs that actually exist in this pursuit's captures
         const validIds = new Set(captures.map(c => c.id))
+        const seenIds = new Set<string>()
         citations = raw
-          .filter(c => validIds.has(c.id))
+          .filter(c => validIds.has(c.id) && !seenIds.has(c.id) && (seenIds.add(c.id), true))
           .map(c => {
             const cap = captures.find(cap => cap.id === c.id)!
             return {
