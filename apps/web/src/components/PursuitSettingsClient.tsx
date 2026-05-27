@@ -87,7 +87,7 @@ function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
       </div>
 
       <div className="space-y-5 mb-7">
-        {FIELDS.map(({ key, label, hint, type }) => (
+        {FIELDS.map(({ key, label, type }) => (
           <div key={key}>
             <label className="block text-[11px] font-medium text-charcoal/50 dark:text-[#5c5a57] uppercase tracking-[0.07em] mb-[6px]">
               {label}
