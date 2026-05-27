@@ -667,15 +667,15 @@ interface Props {
 
 const MODE_COLORS: Record<string, string> = {
   building: '#9e2a2b',
-  creating: '#efcb68',
-  researching: '#58a4b0',
+  exploring: '#58a4b0',
+  becoming: '#efcb68',
   figuring_out: '#67934d',
 }
 
 const MODE_LABELS: Record<string, string> = {
   building: 'building',
-  creating: 'creating',
-  researching: 'researching',
+  exploring: 'exploring',
+  becoming: 'becoming',
   figuring_out: 'figuring out',
 }
 

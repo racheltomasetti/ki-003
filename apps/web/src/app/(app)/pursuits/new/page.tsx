@@ -142,7 +142,13 @@ export default function NewPursuitPage() {
 
       router.push(`/pursuits/${pursuit.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : 'Something went wrong'
+      setError(message)
       setSubmitting(false)
     }
   }
