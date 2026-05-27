@@ -114,7 +114,7 @@ export interface CaptureTag {
 
 export type PursuitStatus = 'active' | 'curiosity' | 'archived'
 
-export type PursuitMode = 'building' | 'researching' | 'figuring_out' | 'creating'
+export type PursuitMode = 'building' | 'exploring' | 'becoming' | 'figuring_out'
 
 export type PursuitConversationRole = 'hero' | 'ki'
 
@@ -144,10 +144,6 @@ export interface Pursuit {
   status: PursuitStatus
   core_question: string | null        // null for curiosities; required for active
   core_question_embedding: number[] | null
-  what: string | null
-  why: string | null
-  success_looks_like: string | null
-  open_question: string | null
   pursuit_mode: PursuitMode | null
   created_at: string
   updated_at: string

@@ -29,10 +29,7 @@ interface PursuitRow {
   user_id: string
   name: string
   core_question: string | null
-  what: string | null
-  why: string | null
-  success_looks_like: string | null
-  open_question: string | null
+  description: string | null
   pursuit_mode: string | null
 }
 
@@ -41,10 +38,7 @@ interface PursuitRow {
 function formatPursuitContext(pursuit: PursuitRow): string {
   const lines: string[] = [`Pursuit: ${pursuit.name}`]
   if (pursuit.core_question) lines.push(`Core question: ${pursuit.core_question}`)
-  if (pursuit.what) lines.push(`What they're working on: ${pursuit.what}`)
-  if (pursuit.why) lines.push(`Why it matters to them: ${pursuit.why}`)
-  if (pursuit.success_looks_like) lines.push(`What success looks like: ${pursuit.success_looks_like}`)
-  if (pursuit.open_question) lines.push(`Biggest open question they're sitting with: ${pursuit.open_question}`)
+  if (pursuit.description) lines.push(`What they're carrying: ${pursuit.description}`)
   if (pursuit.pursuit_mode) lines.push(`Pursuit mode: ${pursuit.pursuit_mode}`)
   return lines.join('\n')
 }
@@ -115,7 +109,7 @@ Deno.serve(async (req) => {
     // ── Load pursuit (verify ownership) ──────────────────────────────────────
     const { data: pursuit, error: pursuitError } = await serviceClient
       .from('pursuits')
-      .select('id, user_id, name, core_question, what, why, success_looks_like, open_question, pursuit_mode')
+      .select('id, user_id, name, core_question, description, pursuit_mode')
       .eq('id', pursuit_id)
       .eq('user_id', user.id)
       .single()

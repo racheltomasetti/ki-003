@@ -53,10 +53,6 @@ export async function createPursuit(
     color?: string
     status?: PursuitStatus
     core_question?: string
-    what?: string
-    why?: string
-    success_looks_like?: string
-    open_question?: string
     pursuit_mode?: string
   }
 ): Promise<Pursuit> {
@@ -69,10 +65,6 @@ export async function createPursuit(
       color: data.color ?? null,
       status: data.status ?? 'curiosity',
       core_question: data.core_question ?? null,
-      what: data.what ?? null,
-      why: data.why ?? null,
-      success_looks_like: data.success_looks_like ?? null,
-      open_question: data.open_question ?? null,
       pursuit_mode: data.pursuit_mode ?? null,
     })
     .select()
@@ -88,10 +80,6 @@ export async function updatePursuit(
     name: string
     description: string | null
     color: string | null
-    what: string | null
-    why: string | null
-    success_looks_like: string | null
-    open_question: string | null
     pursuit_mode: string | null
     core_question: string | null
   }>
