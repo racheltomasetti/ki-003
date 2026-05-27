@@ -1,12 +1,12 @@
 import type { ComponentType } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { getCaptureCounts, getCaptures } from '@ki/services'
+import { getActivePursuits, getCaptureCounts, getCaptures } from '@ki/services'
 import Link from 'next/link'
 import { MdKeyboardVoice } from 'react-icons/md'
 import { FaPencil } from 'react-icons/fa6'
 import { IoAttach } from 'react-icons/io5'
 import { QuickCapture } from '@/components/QuickCapture'
-import type { CaptureWithEnrichment } from '@ki/types'
+import type { Pursuit, CaptureWithEnrichment } from '@ki/types'
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,54 @@ function StatCard({
         {value}
       </div>
     </div>
+  )
+}
+
+// ─── Pursuit card ─────────────────────────────────────────────────────────────
+
+const MODE_COLORS: Record<string, string> = {
+  building: '#9e2a2b',
+  creating: '#efcb68',
+  researching: '#58a4b0',
+  figuring_out: '#67934d',
+}
+
+const MODE_LABELS: Record<string, string> = {
+  building: 'building',
+  creating: 'creating',
+  researching: 'researching',
+  figuring_out: 'figuring out',
+}
+
+function PursuitCard({ pursuit }: { pursuit: Pursuit }) {
+  const color = pursuit.color ?? '#9e9b96'
+  const mode = pursuit.pursuit_mode
+  const modeColor = mode ? MODE_COLORS[mode] : null
+  const modeLabel = mode ? MODE_LABELS[mode] : null
+
+  return (
+    <Link
+      href={`/pursuits/${pursuit.id}`}
+      className="block bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-[18px] py-4 hover:border-charcoal/15 dark:hover:border-white/[0.13] hover:bg-charcoal/[0.05] dark:hover:bg-[#1d1b1a] transition-all"
+    >
+      <div className="flex items-center gap-2 mb-[6px] flex-wrap">
+        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+        <span className="text-[14px] font-medium text-charcoal dark:text-[#f0ede8]">{pursuit.name}</span>
+        {modeLabel && modeColor && (
+          <span
+            className="text-[9px] font-medium px-2 py-[2px] rounded-full uppercase tracking-[0.06em]"
+            style={{ background: `${modeColor}20`, color: modeColor }}
+          >
+            {modeLabel}
+          </span>
+        )}
+      </div>
+      {(pursuit.description || pursuit.what) && (
+        <p className="font-serif text-[12px] font-light italic text-charcoal/50 dark:text-[#9e9b96] leading-relaxed line-clamp-2 ml-[14px]">
+          {pursuit.description ?? pursuit.what}
+        </p>
+      )}
+    </Link>
   )
 }
 
@@ -115,11 +163,13 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [counts, { data: recentRows }] = await Promise.all([
+  const [{ data: pursuits }, counts, { data: recentRows }] = await Promise.all([
+    getActivePursuits(supabase, user.id),
     getCaptureCounts(supabase, user.id),
     getCaptures(supabase, { status: 'active', limit: 5 }),
   ])
 
+  const pursuitList = (pursuits ?? []) as Pursuit[]
   const recentCaptures = (recentRows ?? []) as CaptureWithEnrichment[]
 
   return (
@@ -141,16 +191,32 @@ export default async function HomePage() {
           <div className="min-w-0 h-full min-h-0 flex flex-col bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 pt-4 pb-[14px]">
             <div className="mb-3 shrink-0">
               <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">
-                Coming next
+                Pursuits
               </div>
             </div>
-            <div className="flex-1 min-h-[180px] rounded-[12px] border border-dashed border-charcoal/10 dark:border-white/[0.06] bg-charcoal/[0.02] dark:bg-white/[0.02] p-4">
-              <div className="animate-pulse space-y-3">
-                <div className="h-3 w-2/3 rounded bg-charcoal/10 dark:bg-white/[0.08]" />
-                <div className="h-3 w-full rounded bg-charcoal/8 dark:bg-white/[0.07]" />
-                <div className="h-3 w-5/6 rounded bg-charcoal/8 dark:bg-white/[0.07]" />
-                <div className="h-16 w-full rounded-[10px] bg-charcoal/7 dark:bg-white/[0.06]" />
-              </div>
+            <div className="space-y-2">
+              {[0, 1, 2].map(i => {
+                const p = pursuitList[i]
+                if (p) return <PursuitCard key={p.id} pursuit={p} />
+                return (
+                  <div
+                    key={i}
+                    className="rounded-[12px] border border-dashed border-charcoal/10 dark:border-white/[0.06] px-[18px] py-[14px] flex items-center justify-center min-h-[58px]"
+                  >
+                    {i === 0 ? (
+                      <Link href="/pursuits/new" className="text-[12px] text-terra hover:text-[#b83333] transition-colors">
+                        + start your first pursuit
+                      </Link>
+                    ) : pursuitList.length === 0 ? (
+                      <span className="text-[11px] text-charcoal/20 dark:text-[#5c5a57]">slot {i + 1}</span>
+                    ) : (
+                      <Link href="/pursuits/new" className="text-[11px] text-charcoal/25 dark:text-[#5c5a57] hover:text-terra transition-colors">
+                        + add pursuit
+                      </Link>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>

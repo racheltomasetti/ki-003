@@ -8,6 +8,7 @@ import {
   starCapture,
   updateCaptureTitle,
   updateCaptureStatus,
+  deleteCapture,
   addCaptureToPursuit,
   removeCaptureFromPursuit,
   addTagToCapture,
@@ -710,7 +711,7 @@ export function LibraryClient({
       prev => (prev ?? []).filter(c => c.id !== capture.id)
     )
     setSelectedId(null)
-    await updateCaptureStatus(supabase, capture.id, 'deleted')
+    await deleteCapture(supabase, capture.id)
   }
 
   const filterBtnClass = (active: boolean, color: 'terra' | 'ray' = 'terra') =>
