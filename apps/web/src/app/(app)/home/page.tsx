@@ -71,9 +71,9 @@ function PursuitCard({ pursuit }: { pursuit: Pursuit }) {
           </span>
         )}
       </div>
-      {(pursuit.description || pursuit.what) && (
+      {pursuit.description && (
         <p className="font-serif text-[12px] font-light italic text-charcoal/50 dark:text-[#9e9b96] leading-relaxed line-clamp-2 ml-[14px]">
-          {pursuit.description ?? pursuit.what}
+          {pursuit.description}
         </p>
       )}
     </Link>
@@ -185,7 +185,7 @@ export default async function HomePage() {
         {/* Widget row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:items-stretch">
           <div className="min-w-0 flex flex-col h-full min-h-0">
-            <QuickCapture userId={user.id} />
+            <QuickCapture pursuits={pursuitList} userId={user.id} />
           </div>
 
           <div className="min-w-0 h-full min-h-0 flex flex-col bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 pt-4 pb-[14px]">

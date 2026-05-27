@@ -10,47 +10,40 @@ import type { PursuitMode } from '@ki/types'
 
 const STEPS = [
   {
-    key: 'what',
-    question: 'What are you building?',
+    key: 'name',
+    question: 'Name it.',
     hint: '',
+    placeholder: '',
     required: true,
-    type: 'dual', // renders name input + what textarea
+    type: 'input',
   },
   {
-    key: 'why',
-    question: 'Why are you building this?',
+    key: 'description',
+    question: 'Describe it.',
     hint: '',
-    placeholder: 'I am building this because…',
+    placeholder: '',
     required: true,
     type: 'textarea',
   },
   {
-    key: 'success_looks_like',
-    question: 'What does success look like?',
-    hint: 'Be concrete. What would you see, feel, or ship that would tell you this worked?',
-    placeholder: "I'll know this worked when…",
+    key: 'core_question',
+    question: "What's the question you keep coming back to?",
+    hint: '',
+    placeholder: '',
     required: true,
-    type: 'textarea',
-  },
-  {
-    key: 'open_question',
-    question: "What's the biggest open question you're sitting with?",
-    hint: "The thing keeping you up at night, or the fork in the road you haven't reached yet.",
-    placeholder: "I'm still figuring out…",
-    required: false,
     type: 'textarea',
   },
   {
     key: 'pursuit_mode',
-    question: 'What kind of pursuit is this?',
-    hint: 'Pick the one that fits best.',
-    required: false,
+    question: 'How are you moving through this right now?',
+    hint: '',
+    required: true,
     type: 'chips',
     options: [
-      { value: 'building', label: 'Building' },
-      { value: 'researching', label: 'Researching' },
+      { value: 'building',     label: 'Building' },
+      { value: 'exploring',    label: 'Exploring' },
+      { value: 'becoming',     label: 'Becoming' },
       { value: 'figuring_out', label: 'Figuring out' },
-      { value: 'creating', label: 'Creating' },
     ],
   },
 ] as const
@@ -59,10 +52,8 @@ type StepKey = typeof STEPS[number]['key']
 
 type Answers = {
   name: string
-  what: string
-  why: string
-  success_looks_like: string
-  open_question: string
+  description: string
+  core_question: string
   pursuit_mode: PursuitMode | ''
 }
 
@@ -73,10 +64,8 @@ export default function NewPursuitPage() {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Answers>({
     name: '',
-    what: '',
-    why: '',
-    success_looks_like: '',
-    open_question: '',
+    description: '',
+    core_question: '',
     pursuit_mode: '',
   })
   const [submitting, setSubmitting] = useState(false)
@@ -90,14 +79,13 @@ export default function NewPursuitPage() {
 
   const canAdvance = (() => {
     if (!current.required) return true
-    if (current.type === 'dual') return answers.name.trim().length > 0 && answers.what.trim().length > 0
     const answer = answers[current.key as StepKey]
     return typeof answer === 'string' && answer.trim().length > 0
   })()
 
   // Focus on step change
   useEffect(() => {
-    if (current.type === 'dual') {
+    if (current.type === 'input') {
       nameInputRef.current?.focus()
     } else if (current.type === 'textarea') {
       textareaRef.current?.focus()
@@ -146,10 +134,8 @@ export default function NewPursuitPage() {
 
       const pursuit = await createPursuit(supabase, user.id, {
         name: answers.name.trim(),
-        what: answers.what.trim() || undefined,
-        why: answers.why.trim() || undefined,
-        success_looks_like: answers.success_looks_like.trim() || undefined,
-        open_question: answers.open_question.trim() || undefined,
+        description: answers.description.trim() || undefined,
+        core_question: answers.core_question.trim() || undefined,
         pursuit_mode: answers.pursuit_mode || undefined,
         status: 'active',
       })
@@ -217,43 +203,22 @@ export default function NewPursuitPage() {
             {current.hint}
           </p>
 
-          {/* Dual — name + what */}
-          {current.type === 'dual' && (
-            <div className="space-y-8">
-              <div>
-                <label className="font-sans text-xs font-semibold text-charcoal/40 dark:text-cream/40 uppercase tracking-wider block mb-3">
-                  Title
-                </label>
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={answers.name}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, name: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      textareaRef.current?.focus()
-                    }
-                  }}
-                  placeholder="Ki"
-                  className="w-full font-serif text-2xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-terra outline-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-2"
-                />
-              </div>
-              <div>
-                <label className="font-sans text-xs font-semibold text-charcoal/40 dark:text-cream/40 uppercase tracking-wider block mb-3">
-                  Description
-                </label>
-                <textarea
-                  ref={textareaRef}
-                  value={answers.what}
-                  onChange={(e) => handleTextareaChange(e, 'what')}
-                  onKeyDown={handleTextareaKeyDown}
-                  placeholder="I'm building a tool that…"
-                  rows={4}
-                  className="w-full font-serif text-xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-terra outline-none resize-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-3"
-                />
-              </div>
-            </div>
+          {/* Input — name */}
+          {current.type === 'input' && (
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={answers.name}
+              onChange={(e) => setAnswers((prev) => ({ ...prev, name: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && canAdvance) {
+                  e.preventDefault()
+                  advance()
+                }
+              }}
+              placeholder=""
+              className="w-full font-serif text-2xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-terra outline-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-2"
+            />
           )}
 
           {/* Textarea — single contextual question */}
@@ -305,7 +270,7 @@ export default function NewPursuitPage() {
           {/* Actions */}
           <div className="flex items-center justify-between mt-12">
             <p className="font-sans text-xs text-charcoal/25 dark:text-cream/25">
-              {(current.type === 'textarea' || current.type === 'dual') && canAdvance && '⌘↵ to continue'}
+              {(current.type === 'textarea' || current.type === 'input') && canAdvance && '⌘↵ to continue'}
             </p>
 
             <div className="flex items-center gap-4">

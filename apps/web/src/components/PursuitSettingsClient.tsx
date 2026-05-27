@@ -24,9 +24,9 @@ const ACCENT_COLORS = [
 
 const MODE_OPTIONS: { value: PursuitMode; label: string }[] = [
   { value: 'building',     label: 'Building' },
-  { value: 'researching',  label: 'Researching' },
+  { value: 'exploring',    label: 'Exploring' },
+  { value: 'becoming',     label: 'Becoming' },
   { value: 'figuring_out', label: 'Figuring out' },
-  { value: 'creating',     label: 'Creating' },
 ]
 
 // ─── Details tab (name, brief fields, mode) ───────────────────────────────────
@@ -34,15 +34,13 @@ const MODE_OPTIONS: { value: PursuitMode; label: string }[] = [
 function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
   const supabase = createClient()
 
-  type DraftKey = 'name' | 'what' | 'why' | 'success_looks_like' | 'open_question'
+  type DraftKey = 'name' | 'description' | 'core_question'
   type Draft = Record<DraftKey, string> & { pursuit_mode: PursuitMode | '' }
 
   const initialRef = useRef<Draft>({
     name: pursuit.name,
-    what: pursuit.what ?? '',
-    why: pursuit.why ?? '',
-    success_looks_like: pursuit.success_looks_like ?? '',
-    open_question: pursuit.open_question ?? '',
+    description: pursuit.description ?? '',
+    core_question: pursuit.core_question ?? '',
     pursuit_mode: pursuit.pursuit_mode ?? '',
   })
 
@@ -60,13 +58,11 @@ function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
     try {
       await updatePursuit(supabase, pursuit.id, {
         name: draft.name.trim(),
-        what: draft.what.trim() || null,
-        why: draft.why.trim() || null,
-        success_looks_like: draft.success_looks_like.trim() || null,
-        open_question: draft.open_question.trim() || null,
+        description: draft.description.trim() || null,
+        core_question: draft.core_question.trim() || null,
         pursuit_mode: draft.pursuit_mode || null,
       })
-      initialRef.current = { ...draft, name: draft.name.trim() }
+      initialRef.current = { ...draft, name: draft.name.trim(), description: draft.description.trim(), core_question: draft.core_question.trim() }
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
@@ -76,12 +72,10 @@ function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
     }
   }
 
-  const FIELDS: { key: DraftKey; label: string; hint?: string; type: 'input' | 'textarea' }[] = [
-    { key: 'name',             label: 'Pursuit name',                      type: 'input' },
-    { key: 'what',             label: 'What are you building?',            type: 'textarea' },
-    { key: 'why',              label: 'Why are you building this?',        type: 'textarea' },
-    { key: 'success_looks_like', label: 'What does success look like?',   type: 'textarea', hint: 'Be concrete — what would you see, feel, or ship?' },
-    { key: 'open_question',    label: "What's the biggest open question?", type: 'textarea', hint: 'The thing keeping you up at night.' },
+  const FIELDS: { key: DraftKey; label: string; type: 'input' | 'textarea' }[] = [
+    { key: 'name',         label: 'Name',          type: 'input' },
+    { key: 'description',  label: 'Description',   type: 'textarea' },
+    { key: 'core_question', label: 'Core Question', type: 'textarea' },
   ]
 
   const inputClass = 'w-full bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/10 dark:border-white/[0.08] rounded-[10px] px-4 py-[9px] font-serif text-[14px] text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/25 dark:placeholder:text-[#5c5a57] outline-none focus:border-charcoal/20 dark:focus:border-white/[0.15] transition-colors'
@@ -95,13 +89,9 @@ function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
       <div className="space-y-5 mb-7">
         {FIELDS.map(({ key, label, hint, type }) => (
           <div key={key}>
-            <label className="flex items-center gap-1 text-[11px] font-medium text-charcoal/50 dark:text-[#5c5a57] uppercase tracking-[0.07em] mb-[6px]">
+            <label className="block text-[11px] font-medium text-charcoal/50 dark:text-[#5c5a57] uppercase tracking-[0.07em] mb-[6px]">
               {label}
-              {key === 'name' && <span className="text-terra normal-case tracking-normal">*</span>}
             </label>
-            {hint && (
-              <p className="text-[11px] text-charcoal/35 dark:text-[#5c5a57] mb-[6px] leading-relaxed">{hint}</p>
-            )}
             {type === 'input' ? (
               <input
                 type="text"
@@ -123,7 +113,7 @@ function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
         {/* Pursuit mode */}
         <div>
           <label className="block text-[11px] font-medium text-charcoal/50 dark:text-[#5c5a57] uppercase tracking-[0.07em] mb-[8px]">
-            Pursuit mode
+            Current Mode
           </label>
           <div className="flex flex-wrap gap-2">
             {MODE_OPTIONS.map(({ value, label }) => {

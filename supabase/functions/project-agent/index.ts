@@ -41,10 +41,8 @@ interface ProjectRow {
   id: string
   user_id: string
   name: string
-  what: string | null
-  why: string | null
-  success_looks_like: string | null
-  open_question: string | null
+  core_question: string | null
+  description: string | null
   project_mode: string | null
 }
 
@@ -52,10 +50,8 @@ interface ProjectRow {
 
 function formatProjectContext(project: ProjectRow): string {
   const lines: string[] = [`Project: ${project.name}`]
-  if (project.what) lines.push(`What they're working on: ${project.what}`)
-  if (project.why) lines.push(`Why it matters to them: ${project.why}`)
-  if (project.success_looks_like) lines.push(`What success looks like: ${project.success_looks_like}`)
-  if (project.open_question) lines.push(`Biggest open question they're sitting with: ${project.open_question}`)
+  if (project.core_question) lines.push(`Core question: ${project.core_question}`)
+  if (project.description) lines.push(`What they're carrying: ${project.description}`)
   if (project.project_mode) lines.push(`Project mode: ${project.project_mode}`)
   return lines.join('\n')
 }
@@ -125,7 +121,7 @@ Deno.serve(async (req) => {
     // ── Load project (verify ownership) ──────────────────────────────────────
     const { data: project, error: projectError } = await serviceClient
       .from('projects')
-      .select('id, user_id, name, what, why, success_looks_like, open_question, project_mode')
+      .select('id, user_id, name, core_question, description, project_mode')
       .eq('id', project_id)
       .eq('user_id', user.id)
       .single()
