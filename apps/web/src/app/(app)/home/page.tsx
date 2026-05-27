@@ -163,11 +163,7 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [
-    { data: pursuits },
-    counts,
-    { data: recentRows },
-  ] = await Promise.all([
+  const [{ data: pursuits }, counts, { data: recentRows }] = await Promise.all([
     getActivePursuits(supabase, user.id),
     getCaptureCounts(supabase, user.id),
     getCaptures(supabase, { status: 'active', limit: 5 }),
@@ -181,23 +177,21 @@ export default async function HomePage() {
       <div className="px-6 py-6 max-w-[1120px] mx-auto space-y-4">
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <StatCard label="Total captures" value={counts.total} />
-          <StatCard label="Active pursuits" value={pursuitList.length} />
           <StatCard label="Distilled thoughts" value={counts.distilled} />
         </div>
 
-        {/* Widget row — 3 columns to mirror stats width */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:items-stretch">
+        {/* Widget row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:items-stretch">
           <div className="min-w-0 flex flex-col h-full min-h-0">
-            <QuickCapture projects={pursuitList} userId={user.id} />
+            <QuickCapture userId={user.id} />
           </div>
 
           <div className="min-w-0 h-full min-h-0 flex flex-col bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 pt-4 pb-[14px]">
             <div className="mb-3 shrink-0">
               <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">
                 Pursuits
-                <span className="ml-1.5 text-charcoal/30 dark:text-[#5c5a57] font-normal normal-case tracking-normal">{pursuitList.length}/3</span>
               </div>
             </div>
             <div className="space-y-2">
@@ -223,23 +217,6 @@ export default async function HomePage() {
                   </div>
                 )
               })}
-            </div>
-          </div>
-
-          {/* Placeholder widget (skeleton) */}
-          <div className="min-w-0 h-full min-h-0 flex flex-col bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 pt-4 pb-[14px]">
-            <div className="mb-3 shrink-0">
-              <div className="text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.07em]">
-                Coming next
-              </div>
-            </div>
-            <div className="flex-1 min-h-[180px] rounded-[12px] border border-dashed border-charcoal/10 dark:border-white/[0.06] bg-charcoal/[0.02] dark:bg-white/[0.02] p-4">
-              <div className="animate-pulse space-y-3">
-                <div className="h-3 w-2/3 rounded bg-charcoal/10 dark:bg-white/[0.08]" />
-                <div className="h-3 w-full rounded bg-charcoal/8 dark:bg-white/[0.07]" />
-                <div className="h-3 w-5/6 rounded bg-charcoal/8 dark:bg-white/[0.07]" />
-                <div className="h-16 w-full rounded-[10px] bg-charcoal/7 dark:bg-white/[0.06]" />
-              </div>
             </div>
           </div>
         </div>

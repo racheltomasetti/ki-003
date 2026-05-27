@@ -2,9 +2,15 @@
 //
 // Triggered by a Postgres webhook on captures INSERT.
 // Fetches the capture body + user memory document, calls Claude Haiku for
-// structured enrichment, generates a vector embedding, and writes everything
-// to the enrichments row. The pending row already exists (created by the
-// create_pending_enrichment trigger), so this always UPDATEs, never INSERTs.
+// structured enrichment, generates a vector embedding, writes everything
+// to the enrichments row, and then runs pursuit resonance matching.
+//
+// Pursuit resonance: cosine similarity between the capture embedding and each
+// active pursuit's core_question_embedding. Matches above RESONANCE_THRESHOLD
+// get a Claude-generated reason and are written to enrichments.pursuit_connections.
+//
+// The pending row already exists (created by the create_pending_enrichment
+// trigger), so this always UPDATEs, never INSERTs.
 //
 // The capture is never touched on failure — only enrichment_status is set to
 // 'failed'. The capture pipeline is always unblocked.
@@ -13,6 +19,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001'
 const EMBEDDING_MODEL = 'text-embedding-3-small'
+const RESONANCE_THRESHOLD = 0.40
 
 // ─── Time of day ─────────────────────────────────────────────────────────────
 // Derived from captured_at server-side. Never from Claude.
@@ -133,6 +140,108 @@ async function generateEmbedding(text: string): Promise<number[]> {
   return data.data[0].embedding as number[]
 }
 
+// ─── Cosine similarity ────────────────────────────────────────────────────────
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0, normA = 0, normB = 0
+  for (let i = 0; i < a.length; i++) {
+    dot   += a[i] * b[i]
+    normA += a[i] * a[i]
+    normB += b[i] * b[i]
+  }
+  if (normA === 0 || normB === 0) return 0
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB))
+}
+
+// ─── Pursuit resonance ────────────────────────────────────────────────────────
+// Matches a capture embedding against active pursuit core_question_embeddings.
+// Returns PursuitConnection objects for matches above RESONANCE_THRESHOLD.
+
+interface Pursuit {
+  id: string
+  name: string
+  core_question: string
+  core_question_embedding: number[]
+}
+
+interface PursuitConnection {
+  pursuit_id: string
+  reason: string
+  confidence: number
+  matched_at: string
+}
+
+async function generateResonanceReason(
+  captureBody: string,
+  pursuit: Pursuit,
+  confidence: number,
+): Promise<string> {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: HAIKU_MODEL,
+      max_tokens: 200,
+      system: `You are Ki. Explain in one clear sentence why this capture resonates with the user's pursuit. Be specific and grounded — reference what is actually in the capture and how it touches the pursuit's core question. Do not be generic. Do not say "this capture resonates because" — just write the reason directly.`,
+      messages: [
+        {
+          role: 'user',
+          content: `Pursuit: "${pursuit.name}"\nCore question: "${pursuit.core_question}"\n\nCapture:\n${captureBody}`,
+        },
+      ],
+    }),
+  })
+
+  if (!res.ok) {
+    console.warn(`resonance reason generation failed: ${res.status}`)
+    return `Relates to your pursuit of ${pursuit.name}.`
+  }
+
+  const data = await res.json()
+  return (data.content?.[0]?.text ?? '').trim()
+}
+
+async function matchPursuitResonance(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  captureBody: string,
+  captureEmbedding: number[],
+): Promise<PursuitConnection[]> {
+  // Fetch active pursuits with core_question_embedding
+  const { data: pursuits, error } = await supabase
+    .from('pursuits')
+    .select('id, name, core_question, core_question_embedding')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .not('core_question_embedding', 'is', null)
+
+  if (error || !pursuits || pursuits.length === 0) return []
+
+  const connections: PursuitConnection[] = []
+  const matchedAt = new Date().toISOString()
+
+  for (const pursuit of pursuits as Pursuit[]) {
+    const confidence = cosineSimilarity(captureEmbedding, pursuit.core_question_embedding)
+
+    if (confidence < RESONANCE_THRESHOLD) continue
+
+    const reason = await generateResonanceReason(captureBody, pursuit, confidence)
+
+    connections.push({
+      pursuit_id: pursuit.id,
+      reason,
+      confidence: Math.round(confidence * 1000) / 1000,
+      matched_at: matchedAt,
+    })
+  }
+
+  return connections
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -174,25 +283,43 @@ Deno.serve(async (req) => {
     // Generate vector embedding
     const embedding = await generateEmbedding(capture.body)
 
+    // Run pursuit resonance matching (non-blocking on failure)
+    let pursuitConnections: PursuitConnection[] = []
+    try {
+      pursuitConnections = await matchPursuitResonance(
+        supabase,
+        capture.user_id,
+        capture.body,
+        embedding,
+      )
+      if (pursuitConnections.length > 0) {
+        console.log(`enrich-capture: ${pursuitConnections.length} pursuit connection(s) for ${captureId}`)
+      }
+    } catch (resonanceErr) {
+      // Never let resonance failures block the main enrichment write
+      console.error(`enrich-capture: resonance matching failed for ${captureId}`, resonanceErr)
+    }
+
     // Write enrichment
     const { error: enrichErr } = await supabase
       .from('enrichments')
       .update({
-        summary:          enrichment.summary   ?? null,
-        themes:           Array.isArray(enrichment.themes) ? enrichment.themes : [],
-        sentiment:        sanitizeEnum(enrichment.sentiment, VALID_SENTIMENTS),
-        mood_tags:        Array.isArray(enrichment.mood_tags) ? enrichment.mood_tags : [],
-        energy_level:     sanitizeEnum(enrichment.energy_level, VALID_ENERGY_LEVELS),
-        capture_intent:   sanitizeEnum(enrichment.capture_intent, VALID_CAPTURE_INTENTS),
-        questions_raised: Array.isArray(enrichment.questions_raised) ? enrichment.questions_raised : [],
-        people_mentioned: Array.isArray(enrichment.people_mentioned) ? enrichment.people_mentioned : [],
-        key_quotes:       Array.isArray(enrichment.key_quotes) ? enrichment.key_quotes : [],
-        entities:         enrichment.entities ?? {},
-        time_of_day_cat:  timeOfDayCat,
+        summary:             enrichment.summary   ?? null,
+        themes:              Array.isArray(enrichment.themes) ? enrichment.themes : [],
+        sentiment:           sanitizeEnum(enrichment.sentiment, VALID_SENTIMENTS),
+        mood_tags:           Array.isArray(enrichment.mood_tags) ? enrichment.mood_tags : [],
+        energy_level:        sanitizeEnum(enrichment.energy_level, VALID_ENERGY_LEVELS),
+        capture_intent:      sanitizeEnum(enrichment.capture_intent, VALID_CAPTURE_INTENTS),
+        questions_raised:    Array.isArray(enrichment.questions_raised) ? enrichment.questions_raised : [],
+        people_mentioned:    Array.isArray(enrichment.people_mentioned) ? enrichment.people_mentioned : [],
+        key_quotes:          Array.isArray(enrichment.key_quotes) ? enrichment.key_quotes : [],
+        entities:            enrichment.entities ?? {},
+        time_of_day_cat:     timeOfDayCat,
         embedding,
-        enrichment_status: 'complete',
-        processed_at:     new Date().toISOString(),
-        model_used:       HAIKU_MODEL,
+        pursuit_connections: pursuitConnections.length > 0 ? pursuitConnections : null,
+        enrichment_status:   'complete',
+        processed_at:        new Date().toISOString(),
+        model_used:          HAIKU_MODEL,
       })
       .eq('capture_id', captureId)
 

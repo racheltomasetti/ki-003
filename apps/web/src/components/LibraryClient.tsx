@@ -7,6 +7,8 @@ import {
   getCaptures,
   starCapture,
   updateCaptureTitle,
+  updateCaptureStatus,
+  deleteCapture,
   addCaptureToPursuit,
   removeCaptureFromPursuit,
   addTagToCapture,
@@ -132,6 +134,8 @@ function CaptureDetailPanel({
   userId,
   starred,
   onStar,
+  onArchive,
+  onDelete,
   onTagCreated,
 }: {
   capture: CaptureRow
@@ -140,6 +144,8 @@ function CaptureDetailPanel({
   userId: string
   starred: boolean
   onStar: () => void
+  onArchive: () => void
+  onDelete: () => void
   onTagCreated: (tag: Tag) => void
 }) {
   const supabase = createClient()
@@ -162,6 +168,41 @@ function CaptureDetailPanel({
 
   // Pursuit add dropdown
   const [pursuitDropdownOpen, setPursuitDropdownOpen] = useState(false)
+
+  // Three-dot menu
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+        setDeleteConfirm(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
+
+  const handleArchive = async () => {
+    setMenuOpen(false)
+    await updateCaptureStatus(supabase, capture.id, 'archived')
+    onArchive()
+  }
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) {
+      setDeleteConfirm(true)
+      return
+    }
+    setMenuOpen(false)
+    setDeleteConfirm(false)
+    await updateCaptureStatus(supabase, capture.id, 'deleted')
+    onDelete()
+  }
 
   const capturePursuitIds = new Set((capture.capture_pursuits ?? []).map(cp => cp.pursuit_id))
   const captureTags = capture.capture_tags ?? []
@@ -244,17 +285,58 @@ function CaptureDetailPanel({
                 <span className="absolute right-0 bottom-[8px] font-sans text-[10px] text-sage">saved</span>
               )}
             </div>
-            <button
-              type="button"
-              onClick={onStar}
-              className={[
-                'shrink-0 text-[22px] transition-colors leading-none mt-[2px]',
-                starred ? 'text-ray' : 'text-charcoal/20 dark:text-[#5c5a57] hover:text-ray',
-              ].join(' ')}
-              title={starred ? 'Unstar' : 'Star'}
-            >
-              {starred ? '★' : '☆'}
-            </button>
+
+            {/* Three-dot menu */}
+            <div className="relative shrink-0 mt-[2px]" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(v => !v); setDeleteConfirm(false) }}
+                className="w-7 h-7 flex items-center justify-center rounded-[7px] font-sans text-[16px] leading-none text-charcoal/30 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/5 dark:hover:bg-white/5 transition-all"
+                title="More options"
+              >
+                ···
+              </button>
+
+              {menuOpen && (
+                <div className="absolute top-full right-0 mt-[6px] bg-cream dark:bg-[#1d1b1a] border border-charcoal/12 dark:border-white/[0.08] rounded-[12px] py-[5px] shadow-lg z-20 min-w-[160px]">
+
+                  {/* Favorite */}
+                  <button
+                    onClick={() => { onStar(); setMenuOpen(false) }}
+                    className="w-full text-left flex items-center gap-[10px] px-4 py-[8px] font-sans text-[12px] text-charcoal/65 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.04] dark:hover:bg-white/[0.04] transition-colors"
+                  >
+                    <span className={starred ? 'text-ray' : 'text-charcoal/30 dark:text-[#5c5a57]'}>
+                      {starred ? '★' : '☆'}
+                    </span>
+                    {starred ? 'Unfavorite' : 'Favorite'}
+                  </button>
+
+                  {/* Archive */}
+                  <button
+                    onClick={handleArchive}
+                    className="w-full text-left flex items-center gap-[10px] px-4 py-[8px] font-sans text-[12px] text-charcoal/65 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.04] dark:hover:bg-white/[0.04] transition-colors"
+                  >
+                    <span className="text-charcoal/30 dark:text-[#5c5a57] text-[13px]">↓</span>
+                    Archive
+                  </button>
+
+                  <div className="mx-3 my-[4px] border-t border-charcoal/8 dark:border-white/[0.06]" />
+
+                  {/* Delete */}
+                  <button
+                    onClick={handleDelete}
+                    className={[
+                      'w-full text-left flex items-center gap-[10px] px-4 py-[8px] font-sans text-[12px] transition-colors hover:bg-charcoal/[0.04] dark:hover:bg-white/[0.04]',
+                      deleteConfirm ? 'text-terra font-medium' : 'text-charcoal/45 dark:text-[#5c5a57] hover:text-terra',
+                    ].join(' ')}
+                  >
+                    <span className="text-[13px]">×</span>
+                    {deleteConfirm ? 'Confirm delete' : 'Delete'}
+                  </button>
+
+                </div>
+              )}
+            </div>
           </div>
           <p className="font-sans text-[10px] font-medium text-charcoal/45 dark:text-[#9e9b96] mt-3">
             <span className="tracking-[0.18em]">{formatLibraryDateLine(capture.captured_at)}</span>
@@ -274,57 +356,75 @@ function CaptureDetailPanel({
 
         {/* Ki insights */}
         {enrichment?.enrichment_status === 'complete' && (
-          <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 py-4 mb-5">
-            <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-3">
-              Key  Insights
-            </div>
+          <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] overflow-hidden mb-5">
 
+            {/* Summary */}
             {enrichment.summary && (
-              <p className="font-serif text-[13px] font-light italic text-charcoal/60 dark:text-[#9e9b96] leading-relaxed mb-3">
-                &ldquo;{enrichment.summary}&rdquo;
-              </p>
-            )}
-
-            {enrichment.themes && enrichment.themes.length > 0 && (
-              <div className="flex flex-wrap gap-[5px] mb-3">
-                {enrichment.themes.map(t => (
-                  <span
-                    key={t}
-                    className="text-[10px] px-2 py-[3px] rounded-full bg-pacific/10 text-pacific border border-pacific/20"
-                  >
-                    {t}
-                  </span>
-                ))}
+              <div className="px-5 py-4 border-b border-charcoal/8 dark:border-white/[0.07]">
+                <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-2">
+                  Summary
+                </div>
+                <p className="font-serif text-[13px] font-light italic text-charcoal/60 dark:text-[#9e9b96] leading-relaxed">
+                  {enrichment.summary}
+                </p>
               </div>
             )}
 
-            <div className="flex items-center gap-3 flex-wrap">
-              {enrichment.sentiment && (
-                <span className="font-sans text-[10px] text-charcoal/35 dark:text-[#5c5a57]">
-                  {enrichment.sentiment}
-                </span>
-              )}
-              {enrichment.energy_level && (
-                <span className="font-sans text-[10px] text-charcoal/35 dark:text-[#5c5a57]">
-                  {enrichment.energy_level} energy
-                </span>
-              )}
-              {enrichment.mood_tags && enrichment.mood_tags.length > 0 && enrichment.mood_tags.map(m => (
-                <span
-                  key={m}
-                  className="text-[10px] px-[8px] py-[2px] rounded-full bg-charcoal/5 dark:bg-white/5 text-charcoal/40 dark:text-[#5c5a57] border border-charcoal/8 dark:border-white/[0.06]"
-                >
-                  {m}
-                </span>
-              ))}
-            </div>
+            {/* Themes */}
+            {enrichment.themes && enrichment.themes.length > 0 && (
+              <div className="px-5 py-4 border-b border-charcoal/8 dark:border-white/[0.07]">
+                <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-2">
+                  Themes
+                </div>
+                <div className="flex flex-wrap gap-[5px]">
+                  {enrichment.themes.map(t => (
+                    <span
+                      key={t}
+                      className="font-sans text-[10px] px-2 py-[3px] rounded-full bg-pacific/10 text-pacific border border-pacific/20"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
+            {/* Emotions */}
+            {(enrichment.sentiment || enrichment.energy_level || (enrichment.mood_tags && enrichment.mood_tags.length > 0)) && (
+              <div className="px-5 py-4 border-b border-charcoal/8 dark:border-white/[0.07]">
+                <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-2">
+                  Emotions
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {enrichment.sentiment && (
+                    <span className="font-sans text-[10px] px-[8px] py-[2px] rounded-full bg-charcoal/5 dark:bg-white/5 text-charcoal/50 dark:text-[#9e9b96] border border-charcoal/8 dark:border-white/[0.06] capitalize">
+                      {enrichment.sentiment}
+                    </span>
+                  )}
+                  {enrichment.energy_level && (
+                    <span className="font-sans text-[10px] px-[8px] py-[2px] rounded-full bg-charcoal/5 dark:bg-white/5 text-charcoal/50 dark:text-[#9e9b96] border border-charcoal/8 dark:border-white/[0.06] capitalize">
+                      {enrichment.energy_level} energy
+                    </span>
+                  )}
+                  {enrichment.mood_tags && enrichment.mood_tags.map(m => (
+                    <span
+                      key={m}
+                      className="font-sans text-[10px] px-[8px] py-[2px] rounded-full bg-charcoal/5 dark:bg-white/5 text-charcoal/50 dark:text-[#9e9b96] border border-charcoal/8 dark:border-white/[0.06]"
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Questions raised */}
             {enrichment.questions_raised && enrichment.questions_raised.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-charcoal/8 dark:border-white/[0.07]">
-                <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em] mb-2">
+              <div className="px-5 py-4">
+                <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-2">
                   Questions raised
                 </div>
-                <ul className="space-y-[4px]">
+                <ul className="space-y-[5px]">
                   {enrichment.questions_raised.map((q, i) => (
                     <li key={i} className="font-serif text-[12px] font-light italic text-charcoal/50 dark:text-[#5c5a57] leading-relaxed">
                       {q}
@@ -333,6 +433,7 @@ function CaptureDetailPanel({
                 </ul>
               </div>
             )}
+
           </div>
         )}
 
@@ -593,6 +694,26 @@ export function LibraryClient({
     }
   }
 
+  const handleArchive = async (capture: CaptureRow) => {
+    // Optimistically remove from list
+    queryClient.setQueryData<CaptureRow[]>(
+      ['library-captures', search],
+      prev => (prev ?? []).filter(c => c.id !== capture.id)
+    )
+    setSelectedId(null)
+    await updateCaptureStatus(supabase, capture.id, 'archived')
+  }
+
+  const handleDelete = async (capture: CaptureRow) => {
+    // Optimistically remove from list
+    queryClient.setQueryData<CaptureRow[]>(
+      ['library-captures', search],
+      prev => (prev ?? []).filter(c => c.id !== capture.id)
+    )
+    setSelectedId(null)
+    await deleteCapture(supabase, capture.id)
+  }
+
   const filterBtnClass = (active: boolean, color: 'terra' | 'ray' = 'terra') =>
     [
       'px-3 py-[5px] rounded-[8px] font-sans text-[11px] font-medium transition-all border whitespace-nowrap',
@@ -722,6 +843,8 @@ export function LibraryClient({
             userId={userId}
             starred={localStarred.has(selectedCapture.id) ? localStarred.get(selectedCapture.id)! : selectedCapture.is_starred}
             onStar={() => handleStar(selectedCapture)}
+            onArchive={() => handleArchive(selectedCapture)}
+            onDelete={() => handleDelete(selectedCapture)}
             onTagCreated={tag => setTags(prev => [...prev, tag])}
           />
         ) : (

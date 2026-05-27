@@ -83,7 +83,7 @@ export function Sidebar({ pursuits, profile, userEmail }: SidebarProps) {
           )
         })}
 
-        {/* Projects section */}
+        {/* Pursuits section */}
         <div className="px-5 mt-3 mb-[3px] text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em]">
           Pursuits
         </div>

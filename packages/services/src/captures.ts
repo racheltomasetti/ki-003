@@ -123,6 +123,13 @@ export async function updateCaptureStatus(
     .single()
 }
 
+export async function deleteCapture(client: SupabaseClient, id: string) {
+  return client
+    .from('captures')
+    .delete()
+    .eq('id', id)
+}
+
 export async function starCapture(client: SupabaseClient, id: string, isStarred: boolean) {
   return client
     .from('captures')

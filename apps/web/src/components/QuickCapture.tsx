@@ -3,8 +3,8 @@
 import Image from 'next/image'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { createCapture, addCaptureToPursuit, addTagToCapture, getTags, createTag } from '@ki/services'
-import type { Pursuit, Tag } from '@ki/types'
+import { createCapture, addTagToCapture, getTags, createTag } from '@ki/services'
+import type { Tag } from '@ki/types'
 
 type VoiceState = 'idle' | 'recording' | 'processing'
 
@@ -41,19 +41,17 @@ async function transcribeBlob(blob: Blob): Promise<string> {
 
 interface SaveModalProps {
   body: string
-  pursuits: Pursuit[]
   userId: string
-  onSave: (opts: { title: string; body: string; projectIds: string[]; tagIds: string[] }) => Promise<void>
+  onSave: (opts: { title: string; body: string; tagIds: string[] }) => Promise<void>
   onClose: () => void
   saving: boolean
 }
 
-function SaveModal({ body: initialBody, pursuits, userId, onSave, onClose, saving }: SaveModalProps) {
+function SaveModal({ body: initialBody, userId, onSave, onClose, saving }: SaveModalProps) {
   const supabase = createClient()
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState(initialBody)
-  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [newTagName, setNewTagName] = useState('')
@@ -70,9 +68,6 @@ function SaveModal({ body: initialBody, pursuits, userId, onSave, onClose, savin
   useEffect(() => {
     if (showTagInput) tagInputRef.current?.focus()
   }, [showTagInput])
-
-  const toggleProject = (id: string) =>
-    setSelectedProjectIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
 
   const toggleTag = (id: string) =>
     setSelectedTagIds(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id])
@@ -154,37 +149,6 @@ function SaveModal({ body: initialBody, pursuits, userId, onSave, onClose, savin
             />
           </div>
 
-          {/* Pursuits */}
-          {pursuits.length > 0 && (
-            <div>
-              <label className="block font-sans text-[10px] font-semibold text-charcoal/35 dark:text-[#5c5a57] uppercase tracking-widest mb-2">
-                Pursuits
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {pursuits.map(p => {
-                  const active = selectedProjectIds.includes(p.id)
-                  const color = p.color ?? '#9e2a2b'
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => toggleProject(p.id)}
-                      className={[
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-full font-sans text-[12px] border transition-all',
-                        active
-                          ? 'border-transparent text-cream'
-                          : 'border-charcoal/10 dark:border-white/[0.08] text-charcoal/55 dark:text-[#9e9b96] bg-transparent hover:border-charcoal/20 dark:hover:border-white/[0.15]',
-                      ].join(' ')}
-                      style={active ? { backgroundColor: color } : {}}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: active ? '#f6f1e6' : color }} />
-                      {p.name}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Tags */}
           <div>
             <label className="block font-sans text-[10px] font-semibold text-charcoal/35 dark:text-[#5c5a57] uppercase tracking-widest mb-2">
@@ -236,7 +200,7 @@ function SaveModal({ body: initialBody, pursuits, userId, onSave, onClose, savin
         {/* Footer */}
         <div className="px-5 py-4 border-t border-charcoal/8 dark:border-white/[0.07] flex-shrink-0">
           <button
-            onClick={() => onSave({ title: title.trim(), body: body.trim(), projectIds: selectedProjectIds, tagIds: selectedTagIds })}
+            onClick={() => onSave({ title: title.trim(), body: body.trim(), tagIds: selectedTagIds })}
             disabled={!canSave || saving}
             className={[
               'w-full py-3 rounded-[12px] font-sans text-[13px] font-semibold transition-all',
@@ -257,11 +221,10 @@ function SaveModal({ body: initialBody, pursuits, userId, onSave, onClose, savin
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
-  projects: Pursuit[]
   userId: string
 }
 
-export function QuickCapture({ projects, userId }: Props) {
+export function QuickCapture({ userId }: Props) {
   const supabase = createClient()
 
   const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice')
@@ -337,10 +300,9 @@ export function QuickCapture({ projects, userId }: Props) {
     setRecordingStartedAt(null)
   }, [])
 
-  const handleSave = async ({ title, body, projectIds, tagIds }: {
+  const handleSave = async ({ title, body, tagIds }: {
     title: string
     body: string
-    projectIds: string[]
     tagIds: string[]
   }) => {
     setSaving(true)
@@ -354,10 +316,9 @@ export function QuickCapture({ projects, userId }: Props) {
         body,
       })
 
-      await Promise.all([
-        ...projectIds.map(pid => addCaptureToPursuit(supabase, capture.id, pid, userId)),
-        ...tagIds.map(tid => addTagToCapture(supabase, capture.id, tid, userId)),
-      ])
+      await Promise.all(
+        tagIds.map(tid => addTagToCapture(supabase, capture.id, tid, userId))
+      )
 
       setBody('')
       setInEditor(false)
@@ -517,7 +478,6 @@ export function QuickCapture({ projects, userId }: Props) {
       {showModal && (
         <SaveModal
           body={body.trim()}
-          pursuits={projects}
           userId={userId}
           onSave={handleSave}
           onClose={() => setShowModal(false)}

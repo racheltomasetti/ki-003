@@ -18,6 +18,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 const SONNET_MODEL = 'claude-sonnet-4-6'
 const EMBEDDING_MODEL = 'text-embedding-3-small'
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 // ─── Embedding ────────────────────────────────────────────────────────────────
 
 async function embedText(text: string): Promise<number[]> {
@@ -57,6 +63,10 @@ function formatCaptures(captures: Array<{
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS })
+  }
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
@@ -67,12 +77,12 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization') ?? ''
   const token = authHeader.replace('Bearer ', '').trim()
   if (!token) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS })
   }
 
   const { data: { user }, error: authError } = await serviceClient.auth.getUser(token)
   if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS })
   }
 
   try {
@@ -82,7 +92,7 @@ Deno.serve(async (req) => {
     }
 
     if (!message?.trim()) {
-      return new Response(JSON.stringify({ error: 'No message provided' }), { status: 400 })
+      return new Response(JSON.stringify({ error: 'No message provided' }), { status: 400, headers: CORS_HEADERS })
     }
 
     // ── Layer 1: memory document ─────────────────────────────────────────────
@@ -167,14 +177,14 @@ Rules:
 
     return new Response(
       JSON.stringify({ response, citations }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     )
 
   } catch (err) {
     console.error('chat-with-ki error:', err)
     return new Response(
       JSON.stringify({ error: 'Internal error', response: 'Something went wrong. Please try again.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     )
   }
 })
