@@ -18,8 +18,8 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Ki',
-  description: 'A living extension of your mind.',
+  title: 'ki',
+  description: 'the Self toolkit',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
 export default function SignInPage() {
@@ -32,18 +32,12 @@ export default function SignInPage() {
 
   return (
     <div className="w-full max-w-sm">
-      {/* Wordmark */}
-      <div className="mb-12">
-        <h1 className="font-serif text-5xl text-charcoal dark:text-cream font-bold">Ki</h1>
-        <p className="font-sans text-sm text-charcoal/50 dark:text-cream/50 mt-1">
-          A living extension of your mind.
-        </p>
-      </div>
+      <p className="text-center text-xl font-serif text-charcoal/50 dark:text-cream/50 mb-6">welcome back</p>
 
       <form onSubmit={handleSignIn} className="flex flex-col gap-3">
         <input
           type="email"
-          placeholder="Email"
+          placeholder="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -52,7 +46,7 @@ export default function SignInPage() {
 
         <input
           type="password"
-          placeholder="Password"
+          placeholder="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -66,18 +60,14 @@ export default function SignInPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-terra text-cream font-sans font-semibold text-sm py-3 rounded-xl mt-1 hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center py-3 mt-1 hover:opacity-60 active:opacity-40 transition-opacity disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
         >
-          {loading ? 'Signing in…' : 'Sign in'}
+          <div className="relative h-12 w-[45px]">
+            <Image src="/logo-light.png" alt="Ki" width={320} height={96} priority className="dark:hidden block h-full w-full object-contain" />
+            <Image src="/logo-dark.png" alt="Ki" width={320} height={96} priority className="hidden dark:block h-full w-full object-contain" />
+          </div>
         </button>
       </form>
-
-      <p className="font-sans text-sm text-charcoal/50 dark:text-cream/50 text-center mt-8">
-        No account?{' '}
-        <Link href="/sign-up" className="text-pacific hover:opacity-80 transition-opacity">
-          Sign up
-        </Link>
-      </p>
     </div>
   )
 }

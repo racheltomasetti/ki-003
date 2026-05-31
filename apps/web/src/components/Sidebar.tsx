@@ -1,10 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LuLibrary } from 'react-icons/lu'
-import { HiMiniHome } from "react-icons/hi2";
+import { HiMiniHome } from "react-icons/hi2"
 import { IoCompassOutline } from 'react-icons/io5'
 import type { Pursuit, Profile } from '@ki/types'
 
@@ -23,38 +24,45 @@ const NAV: { href: string; label: string; Icon: React.ComponentType<{ className?
 export function Sidebar({ pursuits, profile, userEmail }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const [collapsed, setCollapsed] = useState(false)
 
   const displayName = profile?.display_name ?? userEmail?.split('@')[0] ?? 'You'
   const avatarLetter = displayName.charAt(0).toUpperCase()
 
   return (
-    <aside className="w-[220px] h-screen flex flex-col shrink-0 bg-cream dark:bg-[#161514] border-r border-charcoal/10 dark:border-white/[0.07]">
+    <aside
+      className={[
+        'h-screen flex flex-col shrink-0 overflow-hidden',
+        'bg-cream dark:bg-[#161514] border-r border-charcoal/10 dark:border-white/[0.07]',
+        'transition-[width] duration-200 ease-in-out',
+        collapsed ? 'w-[60px]' : 'w-[220px]',
+      ].join(' ')}
+    >
 
-      {/* Logo */}
-      <div className="px-5 pt-5 pb-4 border-b border-charcoal/10 dark:border-white/[0.07]">
-        <div className="grid grid-cols-[30px_1fr] items-center gap-[9px]">
-          <div className="relative h-8 w-[30px] shrink-0">
-            <Image
-              src="/logo-dark.png"
-              alt="Ki"
-              width={320}
-              height={96}
-              priority
-              className="dark:hidden block h-full w-full object-contain "
-            />
-            <Image
-              src="/logo-light.png"
-              alt="Ki"
-              width={320}
-              height={96}
-              priority
-              className="hidden dark:block h-full w-full object-contain"
-            />
-          </div>
-          {/* <p className="font-serif text-[10px] text-charcoal/30 dark:text-[#5c5a57] italic leading-snug min-w-0">
-            in the pursuit of Self
-          </p> */}
-        </div>
+      {/* Logo — acts as collapse/expand toggle */}
+      <div className="pt-5 pb-4 border-b border-charcoal/10 dark:border-white/[0.07] flex justify-center shrink-0">
+        <button
+          onClick={() => setCollapsed(v => !v)}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="relative h-8 w-[30px] opacity-80 hover:opacity-100 transition-opacity"
+        >
+          <Image
+            src="/logo-light.png"
+            alt="Ki"
+            width={320}
+            height={96}
+            priority
+            className="dark:hidden block h-full w-full object-contain"
+          />
+          <Image
+            src="/logo-dark.png"
+            alt="Ki"
+            width={320}
+            height={96}
+            priority
+            className="hidden dark:block h-full w-full object-contain"
+          />
+        </button>
       </div>
 
       {/* Nav */}
@@ -68,24 +76,31 @@ export function Sidebar({ pursuits, profile, userEmail }: SidebarProps) {
             <Link
               key={href}
               href={href}
+              title={collapsed ? label : undefined}
               className={[
-                'grid grid-cols-[30px_1fr] items-center gap-[9px] px-5 py-[7px] text-[12.5px] border-l-2 transition-all duration-150',
+                'border-l-2 transition-all duration-150',
+                collapsed
+                  ? 'flex items-center justify-center py-[7px]'
+                  : 'block px-5 py-[7px] text-[12.5px] text-center',
                 active
                   ? 'text-charcoal dark:text-[#f0ede8] bg-terra/10 border-terra font-medium'
                   : 'text-charcoal/50 dark:text-[#9e9b96] border-transparent hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
               ].join(' ')}
             >
-              <span className={['w-[30px] flex justify-center', active ? '' : 'opacity-70'].join(' ')}>
-                <Icon className="text-[18px]" />
-              </span>
-              <span>{label}</span>
+              {collapsed
+                ? <span className={!active ? 'opacity-70' : ''}><Icon className="text-[18px]" /></span>
+                : label
+              }
             </Link>
           )
         })}
 
         {/* Pursuits section */}
-        <div className="px-5 mt-3 mb-[3px] text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em]">
-          Pursuits
+        <div className={['mt-4', !collapsed ? 'mx-5 border-t border-charcoal/10 dark:border-white/[0.07] pt-[2px]' : 'flex justify-center mb-[11px]'].join(' ')}>
+          {!collapsed
+            ? <span className="block text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em]">Pursuits</span>
+            : <span className="block w-4 border-t border-charcoal/15 dark:border-white/[0.08]" />
+          }
         </div>
 
         {pursuits.map((pursuit) => {
@@ -95,47 +110,56 @@ export function Sidebar({ pursuits, profile, userEmail }: SidebarProps) {
             <Link
               key={pursuit.id}
               href={`/pursuits/${pursuit.id}`}
+              title={collapsed ? pursuit.name : undefined}
               className={[
-                'grid grid-cols-[30px_1fr] items-center gap-[9px] px-5 py-[5px] text-[12px] border-l-2 transition-all duration-150',
+                'flex items-center border-l-2 transition-all duration-150',
+                collapsed
+                  ? 'justify-center py-[5px]'
+                  : 'gap-[8px] px-5 py-[5px] text-[12px]',
                 active
-                  ? 'text-charcoal dark:text-[#f0ede8] border-l-2'
+                  ? 'text-charcoal dark:text-[#f0ede8]'
                   : 'text-charcoal/30 dark:text-[#5c5a57] border-transparent hover:text-charcoal/60 dark:hover:text-[#9e9b96]',
               ].join(' ')}
               style={active ? { borderLeftColor: color } : {}}
             >
-              <span className="w-[30px] flex justify-center">
-                <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ backgroundColor: color }} />
-              </span>
-              <span className="truncate">{pursuit.name}</span>
+              <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ backgroundColor: color }} />
+              {!collapsed && <span className="truncate">{pursuit.name}</span>}
             </Link>
           )
         })}
 
-        {pursuits.length < 3 && (
+        {!collapsed && pursuits.length < 3 && (
           <Link
             href="/pursuits/new"
-            className="grid grid-cols-[30px_1fr] items-center gap-[9px] px-5 py-[5px] text-[11px] text-charcoal/30 dark:text-[#5c5a57] mt-[2px] hover:text-terra dark:hover:text-terra transition-colors"
+            className="block px-5 py-[5px] text-[11px] text-charcoal/30 dark:text-[#5c5a57] mt-[2px] hover:text-terra dark:hover:text-terra transition-colors"
           >
-            <span className="w-[30px] flex justify-center text-[14px]">+</span>
-            <span>new pursuit</span>
+            + new pursuit
           </Link>
         )}
 
       </nav>
 
       {/* Footer — user card */}
-      <div className="px-[14px] py-3 border-t border-charcoal/8 dark:border-white/[0.07]">
+      <div className="px-[14px] py-3 border-t border-charcoal/8 dark:border-white/[0.07] shrink-0">
         <button
           onClick={() => router.push('/profile')}
-          className="flex items-center gap-[10px] w-full px-2 py-[6px] rounded-[10px] hover:bg-charcoal/5 dark:hover:bg-[#1d1b1a] transition-colors cursor-pointer text-left"
+          title={collapsed ? displayName : undefined}
+          className={[
+            'w-full rounded-[10px] hover:bg-charcoal/5 dark:hover:bg-[#1d1b1a] transition-colors cursor-pointer',
+            collapsed
+              ? 'flex items-center justify-center py-[6px]'
+              : 'flex items-center gap-[10px] px-2 py-[6px] text-left',
+          ].join(' ')}
         >
           <div className="w-7 h-7 rounded-full bg-terra/10 border border-terra flex items-center justify-center text-[11px] font-semibold text-terra shrink-0">
             {avatarLetter}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[12px] font-medium text-charcoal dark:text-[#f0ede8] truncate">{displayName}</div>
-            <div className="text-[10px] text-charcoal/35 dark:text-[#5c5a57] truncate">{userEmail ?? ''}</div>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <div className="text-[12px] font-medium text-charcoal dark:text-[#f0ede8] truncate">{displayName}</div>
+              <div className="text-[10px] text-charcoal/35 dark:text-[#5c5a57] truncate">{userEmail ?? ''}</div>
+            </div>
+          )}
         </button>
       </div>
 
