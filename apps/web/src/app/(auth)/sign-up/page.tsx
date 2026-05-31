@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
 export default function SignUpPage() {
@@ -62,18 +63,12 @@ export default function SignUpPage() {
 
   return (
     <div className="w-full max-w-sm">
-      {/* Wordmark */}
-      <div className="mb-12">
-        <h1 className="font-serif text-5xl text-charcoal dark:text-cream font-bold">Ki</h1>
-        <p className="font-sans text-sm text-charcoal/50 dark:text-cream/50 mt-1">
-          A living extension of your mind.
-        </p>
-      </div>
+      <p className="text-center text-xl text-charcoal/50 dark:text-cream/50 font-serif mb-6">welcome to ki</p>
 
       <form onSubmit={handleSignUp} className="flex flex-col gap-3">
         <input
           type="email"
-          placeholder="Email"
+          placeholder="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -82,7 +77,7 @@ export default function SignUpPage() {
 
         <input
           type="password"
-          placeholder="Password"
+          placeholder="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -91,7 +86,7 @@ export default function SignUpPage() {
 
         <input
           type="password"
-          placeholder="Confirm password"
+          placeholder="confirm password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
@@ -105,18 +100,14 @@ export default function SignUpPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-terra text-cream font-sans font-semibold text-sm py-3 rounded-xl mt-1 hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center py-3 mt-1 hover:opacity-60 active:opacity-40 transition-opacity disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
         >
-          {loading ? 'Creating account…' : 'Create account'}
+          <div className="relative h-12 w-[45px]">
+            <Image src="/logo-light.png" alt="Ki" width={320} height={96} priority className="dark:hidden block h-full w-full object-contain" />
+            <Image src="/logo-dark.png" alt="Ki" width={320} height={96} priority className="hidden dark:block h-full w-full object-contain" />
+          </div>
         </button>
       </form>
-
-      <p className="font-sans text-sm text-charcoal/50 dark:text-cream/50 text-center mt-8">
-        Already have an account?{' '}
-        <Link href="/sign-in" className="text-pacific hover:opacity-80 transition-opacity">
-          Sign in
-        </Link>
-      </p>
     </div>
   )
 }
