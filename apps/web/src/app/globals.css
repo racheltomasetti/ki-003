@@ -12,6 +12,18 @@
   /* Typography — injected via next/font CSS variables */
   --font-serif: var(--font-merriweather);
   --font-sans: var(--font-poppins);
+
+  --animate-ki-voice-bar: ki-voice-bar 0.9s ease-in-out infinite;
+}
+
+@keyframes ki-voice-bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
 }
 
 /* Class-based dark mode — responds to .dark on <html> (set by next-themes) */

@@ -35,3 +35,14 @@ export async function addPursuitMessage(
   if (error) throw error
   return data as PursuitConversation
 }
+
+export async function clearPursuitConversation(
+  client: SupabaseClient,
+  pursuitId: string
+): Promise<void> {
+  const { error } = await client
+    .from('pursuit_conversations')
+    .delete()
+    .eq('pursuit_id', pursuitId)
+  if (error) throw error
+}

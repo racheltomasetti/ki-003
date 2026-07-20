@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 import { IoMdSettings } from 'react-icons/io'
 import { createClient } from '@/lib/supabase/client'
-import { addPursuitMessage } from '@ki/services'
+import { addPursuitMessage, clearPursuitConversation } from '@ki/services'
 import type { Pursuit, CaptureWithEnrichment, PursuitConversation } from '@ki/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -455,6 +455,7 @@ function ChatPanel({
   onSendMessage,
   onSaveMessage,
   onCitationClick,
+  onClearMessages,
 }: {
   captureCount: number
   corpusTitles: string[]
@@ -465,6 +466,7 @@ function ChatPanel({
   onSendMessage: (content: string) => void
   onSaveMessage: (messageId: string, content: string) => void
   onCitationClick: (captureId: string, quote?: string) => void
+  onClearMessages: () => void
 }) {
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -510,9 +512,20 @@ function ChatPanel({
           <p className="font-sans text-sm font-medium text-charcoal dark:text-[#f0ede8]">Ki</p>
           <p className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] mt-0.5">thinking partner</p>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-charcoal/5 dark:bg-white/5 border border-charcoal/8 dark:border-white/7">
-          <div className="w-1.5 h-1.5 rounded-full bg-sage flex-shrink-0" />
-          <span className="font-sans text-[10px] text-charcoal/45 dark:text-[#5c5a57]">{captureCount} captures</span>
+        <div className="flex items-center gap-2">
+          {messages.length > 0 && (
+            <button
+              onClick={onClearMessages}
+              disabled={isThinking}
+              className="font-sans text-[10px] text-charcoal/30 dark:text-[#5c5a57] hover:text-charcoal/60 dark:hover:text-[#9e9b96] transition-colors disabled:opacity-30"
+            >
+              clear
+            </button>
+          )}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-charcoal/5 dark:bg-white/5 border border-charcoal/8 dark:border-white/7">
+            <div className="w-1.5 h-1.5 rounded-full bg-sage flex-shrink-0" />
+            <span className="font-sans text-[10px] text-charcoal/45 dark:text-[#5c5a57]">{captureCount} captures</span>
+          </div>
         </div>
       </div>
 
@@ -731,6 +744,16 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
     }
   }
 
+  const handleClearMessages = async () => {
+    try {
+      await clearPursuitConversation(supabase, pursuit.id)
+      setMessages([])
+      setMessageCitations(new Map())
+    } catch (err) {
+      console.error('clear conversation error:', err)
+    }
+  }
+
   const handleSendMessage = async (content: string) => {
     if (isThinking) return
     setIsThinking(true)
@@ -858,6 +881,7 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
               onSendMessage={handleSendMessage}
               onSaveMessage={handleSaveMessage}
               onCitationClick={handleSelectCapture}
+              onClearMessages={handleClearMessages}
             />
           </Panel>
         </PanelGroup>
