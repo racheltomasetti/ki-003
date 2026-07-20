@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createCapture, addCaptureToPursuit, addTagToCapture, getTags, createTag } from '@ki/services'
@@ -8,13 +7,17 @@ import type { Pursuit, Tag } from '@ki/types'
 
 type VoiceState = 'idle' | 'recording' | 'processing'
 
-/** Shared surface — logo tap target uses fixed height; editor grows from same min height */
-const INPUT_SURFACE_CLASSES =
-  'bg-charcoal/5 dark:bg-[#1d1b1a] border border-charcoal/10 dark:border-white/[0.08]'
+/** Shared card shell — Speak chrome, Speak review, and Write all fill the same footprint */
+const CARD_SHELL =
+  'w-full min-h-[112px] flex-1 min-h-0 rounded-[12px] bg-charcoal/5 dark:bg-[#1d1b1a]'
+const CARD_BORDER_SOLID = 'border border-terra/40 dark:border-terra/45'
+const EDITOR_TEXT =
+  'px-[14px] py-3 font-serif text-[13px] font-light text-charcoal dark:text-[#f0ede8] leading-relaxed outline-none resize-none'
 
-/** Grows with parent flex so Quick Capture matches Projects column height */
-const VOICE_TAP_SLOT = `w-full min-h-[112px] flex-1 rounded-[10px] ${INPUT_SURFACE_CLASSES}`
-const EDITOR_SLOT = `w-full min-h-[112px] flex-1 min-h-0 rounded-[18px] ${INPUT_SURFACE_CLASSES} resize-y`
+/** Idle visualizer — eight mute dots */
+const IDLE_DOTS = 8
+/** Recording visualizer — nine bars with staggered heights (CSS animates scaleY) */
+const WAVE_BARS = [0.42, 0.72, 0.48, 0.95, 0.55, 0.82, 0.4, 0.68, 0.5]
 
 function formatRecordingDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
@@ -35,6 +38,44 @@ async function transcribeBlob(blob: Blob): Promise<string> {
   if (!res.ok) throw new Error(`Transcription failed: ${res.status}`)
   const data = await res.json()
   return data.text as string
+}
+
+function StopGlyph({ className }: { className?: string }) {
+  return <span className={['inline-block w-[9px] h-[9px] rounded-[1px] shrink-0', className].join(' ')} aria-hidden />
+}
+
+function IdleDots() {
+  return (
+    <div className="flex items-center justify-center gap-[5px] h-7" aria-hidden>
+      {Array.from({ length: IDLE_DOTS }).map((_, i) => (
+        <span
+          key={i}
+          className="w-[5px] h-[5px] rounded-full bg-charcoal/20 dark:bg-white/[0.18]"
+        />
+      ))}
+    </div>
+  )
+}
+
+function WaveBars({ active }: { active: boolean }) {
+  return (
+    <div className="flex items-end justify-center gap-[3px] h-7" aria-hidden>
+      {WAVE_BARS.map((base, i) => (
+        <span
+          key={i}
+          className={[
+            'w-[3px] rounded-full origin-bottom',
+            active ? 'bg-terra animate-ki-voice-bar' : 'bg-charcoal/20 dark:bg-white/[0.18]',
+          ].join(' ')}
+          style={{
+            height: `${Math.round(base * 28)}px`,
+            animationDelay: active ? `${i * 0.08}s` : undefined,
+            opacity: active ? 1 : 0.5,
+          }}
+        />
+      ))}
+    </div>
+  )
 }
 
 // ─── Save modal ───────────────────────────────────────────────────────────────
@@ -268,7 +309,7 @@ export function QuickCapture({ pursuits, userId }: Props) {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
   /** Raw thought text — filled after transcription; user can edit before save */
   const [body, setBody] = useState('')
-  /** After a successful transcription we show the editor; logo tap is for the next capture only */
+  /** After a successful transcription we show the review surface */
   const [inEditor, setInEditor] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -279,10 +320,9 @@ export function QuickCapture({ pursuits, userId }: Props) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
-  const clearCapture = useCallback(() => {
+  const discardCapture = useCallback(() => {
     setBody('')
     setInEditor(false)
-    setInputMode('voice')
     setError(null)
     setRecordingStartedAt(null)
     setRecordingSeconds(0)
@@ -361,6 +401,7 @@ export function QuickCapture({ pursuits, userId }: Props) {
 
       setBody('')
       setInEditor(false)
+      setInputMode('voice')
       setShowModal(false)
     } catch {
       setError('Something went wrong. Please try again.')
@@ -369,148 +410,177 @@ export function QuickCapture({ pursuits, userId }: Props) {
     }
   }
 
-  const hasContent = (inEditor || inputMode === 'text') && body.trim().length > 0
+  const hasContent = body.trim().length > 0
+  const showReview = inputMode === 'voice' && inEditor
+  const showWrite = inputMode === 'text'
+  const showVoiceChrome = inputMode === 'voice' && !inEditor
+
+  const switchToSpeak = () => {
+    setInputMode('voice')
+    if (body.trim()) setInEditor(true)
+  }
+
+  const switchToWrite = () => {
+    if (voiceState === 'recording') stopRecording()
+    setInputMode('text')
+  }
+
+  const recordActionLabel =
+    voiceState === 'recording'
+      ? 'Stop & transcribe'
+      : voiceState === 'processing'
+        ? 'Transcribing…'
+        : 'Start recording'
 
   return (
     <>
       <div className="w-full h-full min-h-0 flex flex-col bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 pt-4 pb-[14px]">
 
-        {/* Title + mode toggle */}
+        {/* Title + Speak / Write toggle */}
         <div className="flex items-center justify-between mb-3 shrink-0">
           <div className="text-[10px] font-medium text-charcoal/40 dark:text-[#5c5a57] uppercase tracking-[0.08em]">
             Thought Capture
           </div>
-          <div className="flex items-center gap-0.5 bg-charcoal/[0.05] dark:bg-white/[0.05] rounded-[8px] p-0.5">
+          <div className="flex items-center gap-0.5 bg-charcoal/[0.05] dark:bg-white/[0.05] rounded-full p-0.5">
             <button
               type="button"
-              onClick={() => setInputMode('voice')}
-              aria-label="Voice input"
+              onClick={switchToSpeak}
               className={[
-                'flex items-center justify-center w-6 h-6 rounded-[6px] transition-all',
+                'px-2.5 py-[3px] rounded-full font-sans text-[11px] font-semibold transition-all',
                 inputMode === 'voice'
-                  ? 'bg-charcoal/[0.09] dark:bg-white/[0.12] text-charcoal dark:text-[#f0ede8]'
-                  : 'text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal/55 dark:hover:text-[#9e9b96]',
+                  ? 'bg-terra text-cream'
+                  : 'text-charcoal/40 dark:text-[#5c5a57] hover:text-charcoal/60 dark:hover:text-[#9e9b96]',
               ].join(' ')}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="22"/>
-                <line x1="8" y1="22" x2="16" y2="22"/>
-              </svg>
+              Speak
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (voiceState === 'recording') stopRecording()
-                setInputMode('text')
-              }}
-              aria-label="Text input"
+              onClick={switchToWrite}
               className={[
-                'flex items-center justify-center w-6 h-6 rounded-[6px] transition-all',
+                'px-2.5 py-[3px] rounded-full font-sans text-[11px] font-semibold transition-all',
                 inputMode === 'text'
-                  ? 'bg-charcoal/[0.09] dark:bg-white/[0.12] text-charcoal dark:text-[#f0ede8]'
-                  : 'text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal/55 dark:hover:text-[#9e9b96]',
+                  ? 'bg-terra text-cream'
+                  : 'text-charcoal/40 dark:text-[#5c5a57] hover:text-charcoal/60 dark:hover:text-[#9e9b96]',
               ].join(' ')}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-              </svg>
+              Write
             </button>
           </div>
         </div>
 
-        {/* Voice capture → editable transcript — fills space to match Projects widget */}
+        {/* Body */}
         <div className="flex-1 min-h-0 flex flex-col gap-2">
-        {inputMode === 'voice' && !inEditor ? (
-          <>
-            <button
-              type="button"
-              onClick={voiceState === 'recording' ? stopRecording : startRecording}
-              disabled={voiceState === 'processing'}
-              aria-label={voiceState === 'recording' ? 'Stop recording' : voiceState === 'processing' ? 'Transcribing' : 'Start recording'}
+          {showVoiceChrome && (
+            <div
               className={[
-                VOICE_TAP_SLOT,
-                'relative flex items-center justify-center transition-all min-h-[112px]',
+                CARD_SHELL,
                 voiceState === 'recording'
-                  ? '!border-terra/45 !bg-terra/8'
-                  : voiceState === 'processing'
-                    ? '!border-charcoal/15 dark:!border-white/[0.13] cursor-wait'
-                    : 'hover:border-terra/35',
+                  ? CARD_BORDER_SOLID
+                  : 'border border-charcoal/10 dark:border-white/[0.08]',
+                'flex flex-col items-center justify-center gap-3 px-4 py-5',
               ].join(' ')}
             >
-              <Image
-                src="/logo-dark.png"
-                alt="Ki voice capture"
-                width={72}
-                height={72}
-                unoptimized
-                quality={100}
-                sizes="72px"
+              {voiceState === 'recording' ? (
+                <WaveBars active />
+              ) : voiceState === 'processing' ? (
+                <WaveBars active={false} />
+              ) : (
+                <IdleDots />
+              )}
+
+              <button
+                type="button"
+                onClick={voiceState === 'recording' ? stopRecording : startRecording}
+                disabled={voiceState === 'processing'}
+                aria-label={recordActionLabel}
                 className={[
-                  'dark:hidden block w-[72px] h-[72px] object-contain [transform-origin:50%_50%] [will-change:transform]',
-                  voiceState === 'recording' ? 'animate-spin' : '',
-                  voiceState === 'processing' ? 'animate-spin' : '',
+                  'inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-sans text-[13px] font-semibold transition-all border',
+                  voiceState === 'recording'
+                    ? 'border-terra text-terra bg-transparent hover:bg-terra/8'
+                    : voiceState === 'processing'
+                      ? 'border-charcoal/15 dark:border-white/[0.12] text-charcoal/40 dark:text-[#5c5a57] cursor-wait'
+                      : 'border-charcoal/20 dark:border-white/[0.16] text-charcoal dark:text-[#f0ede8] bg-transparent hover:border-terra/50',
                 ].join(' ')}
-                style={voiceState === 'processing' ? { animationDirection: 'reverse' } : undefined}
-              />
-              <Image
-                src="/logo-light.png"
-                alt="Ki voice capture"
-                width={72}
-                height={72}
-                unoptimized
-                quality={100}
-                sizes="72px"
-                className={[
-                  'hidden dark:block w-[72px] h-[72px] object-contain [transform-origin:50%_50%] [will-change:transform]',
-                  voiceState === 'recording' ? 'animate-spin' : '',
-                  voiceState === 'processing' ? 'animate-spin' : '',
-                ].join(' ')}
-                style={voiceState === 'processing' ? { animationDirection: 'reverse' } : undefined}
-              />
+              >
+                <StopGlyph
+                  className={
+                    voiceState === 'recording'
+                      ? 'bg-terra'
+                      : voiceState === 'processing'
+                        ? 'bg-charcoal/25 dark:bg-white/25'
+                        : 'bg-charcoal dark:bg-[#f0ede8]'
+                  }
+                />
+                {recordActionLabel}
+              </button>
+
               {voiceState === 'recording' && (
-                <p className="absolute bottom-3 left-1/2 -translate-x-1/2 font-sans text-[13px] font-medium text-charcoal/50 dark:text-[#9e9b96]">
+                <p className="font-sans text-[12px] font-medium tabular-nums text-charcoal/50 dark:text-[#9e9b96]">
                   {formatRecordingDuration(recordingSeconds)}
                 </p>
               )}
-            </button>
-          </>
-        ) : (
-          <textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            placeholder=""
-            className={`${EDITOR_SLOT} px-[14px] py-3 font-serif text-[13px] font-light text-charcoal dark:text-[#f0ede8] leading-relaxed outline-none focus:border-charcoal/20 dark:focus:border-white/[0.13] transition-colors placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic`}
-          />
-        )}
+            </div>
+          )}
 
-        {error && <p className="font-sans text-[11px] text-terra shrink-0">{error}</p>}
+          {showReview && (
+            <textarea
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              className={[
+                CARD_SHELL,
+                'border border-dashed border-charcoal/15 dark:border-white/[0.12]',
+                EDITOR_TEXT,
+                'italic focus:border-charcoal/25 dark:focus:border-white/[0.2] transition-colors',
+              ].join(' ')}
+            />
+          )}
+
+          {showWrite && (
+            <textarea
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              placeholder="What's on your mind..."
+              className={[
+                CARD_SHELL,
+                'border border-charcoal/10 dark:border-white/[0.08]',
+                EDITOR_TEXT,
+                'focus:border-terra/40 dark:focus:border-terra/45 transition-colors',
+                'placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic placeholder:font-serif',
+              ].join(' ')}
+            />
+          )}
+
+          {error && <p className="font-sans text-[11px] text-terra shrink-0">{error}</p>}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between mt-[10px] gap-3 shrink-0">
-          <div className="min-w-0 flex items-center">
-            {(inEditor || inputMode === 'text') && voiceState === 'idle' && (
+        {/* Footer — only when reviewing or writing */}
+        {(showReview || showWrite) && (
+          <div className="flex items-center justify-end mt-[10px] gap-2 shrink-0">
+            {hasContent && (
               <button
                 type="button"
-                onClick={clearCapture}
+                onClick={discardCapture}
                 className="px-4 py-[6px] rounded-[10px] font-sans text-[12px] font-medium transition-all border border-charcoal/12 dark:border-white/[0.1] text-charcoal/55 dark:text-[#9e9b96] hover:bg-charcoal/[0.06] dark:hover:bg-white/[0.05] hover:text-charcoal dark:hover:text-[#f0ede8]"
               >
-                Clear
+                Discard
               </button>
             )}
-          </div>
-
-          {hasContent && (
             <button
+              type="button"
               onClick={() => setShowModal(true)}
-              className="px-4 py-[6px] rounded-[10px] font-sans text-[12px] font-medium transition-all bg-terra text-cream hover:bg-[#b83333] cursor-pointer"
+              disabled={!hasContent}
+              className={[
+                'px-4 py-[6px] rounded-[10px] font-sans text-[12px] font-semibold transition-all',
+                hasContent
+                  ? 'bg-terra text-cream hover:bg-[#b83333] cursor-pointer'
+                  : 'bg-terra/40 text-cream/70 cursor-not-allowed',
+              ].join(' ')}
             >
-              Save
+              Capture
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
       </div>
 
