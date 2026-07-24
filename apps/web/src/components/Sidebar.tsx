@@ -8,7 +8,7 @@ import { useTheme } from 'next-themes'
 import { LuLibrary } from 'react-icons/lu'
 import { HiMiniHome } from 'react-icons/hi2'
 import { IoCompassOutline } from 'react-icons/io5'
-import {  MdLightMode } from 'react-icons/md'
+import { MdChecklist, MdLightMode } from 'react-icons/md'
 import { IoMoon } from "react-icons/io5";
 import type { Pursuit, PursuitMode, Profile } from '@ki/types'
 
@@ -23,6 +23,7 @@ const NAV: { href: string; label: string; Icon: ComponentType<{ className?: stri
   { href: '/home', label: 'Home', Icon: HiMiniHome },
   { href: '/library', label: 'Corpus', Icon: LuLibrary },
   { href: '/explore', label: 'Explore', Icon: IoCompassOutline },
+  { href: '/todos', label: 'Todos', Icon: MdChecklist },
 ]
 
 const MODE_COLORS: Record<PursuitMode, string> = {
