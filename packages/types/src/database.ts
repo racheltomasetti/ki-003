@@ -610,14 +610,10 @@ export type Database = {
           description: string | null
           id: string
           name: string
-          open_question: string | null
           pursuit_mode: string | null
           status: string
-          success_looks_like: string | null
           updated_at: string
           user_id: string
-          what: string | null
-          why: string | null
         }
         Insert: {
           color?: string | null
@@ -627,14 +623,10 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
-          open_question?: string | null
           pursuit_mode?: string | null
           status?: string
-          success_looks_like?: string | null
           updated_at?: string
           user_id: string
-          what?: string | null
-          why?: string | null
         }
         Update: {
           color?: string | null
@@ -644,14 +636,10 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
-          open_question?: string | null
           pursuit_mode?: string | null
           status?: string
-          success_looks_like?: string | null
           updated_at?: string
           user_id?: string
-          what?: string | null
-          why?: string | null
         }
         Relationships: [
           {
@@ -682,6 +670,63 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      todos: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          priority: string
+          pursuit_id: string | null
+          source: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          pursuit_id?: string | null
+          source?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          pursuit_id?: string | null
+          source?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todos_pursuit_id_fkey"
+            columns: ["pursuit_id"]
+            isOneToOne: false
+            referencedRelation: "pursuits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todos_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"

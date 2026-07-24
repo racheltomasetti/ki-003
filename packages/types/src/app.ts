@@ -38,6 +38,12 @@ export type CaptureIntent =
 
 export type TimeOfDayCat = 'morning' | 'afternoon' | 'evening' | 'night'
 
+export type TodoStatus = 'not_started' | 'in_progress' | 'complete' | 'archived'
+
+export type TodoPriority = 'high' | 'medium' | 'low'
+
+export type TodoSource = 'manual' | 'agent'
+
 // ─── Core entities ───────────────────────────────────────────────────────────
 
 export interface Profile {
@@ -178,6 +184,20 @@ export interface CapturePursuit {
   pursuits?: Pursuit
 }
 
+export interface Todo {
+  id: string
+  user_id: string
+  pursuit_id: string | null
+  title: string
+  notes: string | null
+  status: TodoStatus
+  priority: TodoPriority
+  due_date: string | null
+  source: TodoSource
+  created_at: string
+  updated_at: string
+}
+
 // ─── Derived / composed types used in the UI ─────────────────────────────────
 
 export interface CaptureWithEnrichment extends Capture {
@@ -210,6 +230,13 @@ export type CaptureInsert = Pick<
   >
 
 export type CaptureStatusUpdate = Pick<Capture, 'status'>
+
+export type TodoInsert = Pick<Todo, 'title' | 'status' | 'priority'> &
+  Partial<Pick<Todo, 'notes' | 'due_date' | 'pursuit_id' | 'source'>>
+
+export type TodoUpdate = Partial<
+  Pick<Todo, 'title' | 'notes' | 'status' | 'priority' | 'due_date' | 'pursuit_id'>
+>
 
 // ─── Canvas ───────────────────────────────────────────────────────────────────
 
