@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { useEffect, useState } from 'react'
+import { ThemeKeyboardShortcut } from './ThemeKeyboardShortcut'
 
 // Reads saved accent color from localStorage on mount and applies it to
 // --color-terra so all terra-based Tailwind utilities update app-wide.
@@ -27,6 +28,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   )
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ThemeKeyboardShortcut />
       <AccentColorProvider>
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
       </AccentColorProvider>
