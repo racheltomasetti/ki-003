@@ -32,6 +32,40 @@ const PLAIN_QUOTE_AT_START = /^("([^"]+)"|\u201C([^\u201D]+)\u201D)/
 const BOLD_AT_START = /^\*\*([^*]+)\*\*/
 const STANDALONE_ITALIC_QUOTE = /^\s*\*("([^"]+)"|\u201C([^\u201D]+)\u201D)\*\s*$/
 
+const CITATIONS_BLOCK_RE = /<citations>[\s\S]*?<\/citations>/gi
+
+/** Strip leaked model citation XML from message body (safety net for stored messages). */
+function stripCitationsBlock(content: string): string {
+  return content.replace(CITATIONS_BLOCK_RE, '').replace(/<\/?response>/gi, '').trim()
+}
+
+/** Recover citation ids/quotes from a leaked block when the structured map is missing. */
+function parseCitationsFromContent(
+  content: string,
+  captures: CaptureWithEnrichment[],
+): Citation[] {
+  const match = content.match(/<citations>([\s\S]*?)<\/citations>/i)
+  if (!match) return []
+  try {
+    const raw: Array<{ id: string; quote?: string }> = JSON.parse(match[1].trim())
+    const byId = new Map(captures.map(c => [c.id, c]))
+    const seen = new Set<string>()
+    return raw.flatMap(c => {
+      if (seen.has(c.id) || !byId.has(c.id)) return []
+      seen.add(c.id)
+      const cap = byId.get(c.id)!
+      return [{
+        id: c.id,
+        title: cap.title,
+        captured_at: cap.captured_at,
+        ...(c.quote ? { quote: c.quote } : {}),
+      }]
+    })
+  } catch {
+    return []
+  }
+}
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -446,6 +480,7 @@ function CorpusPanel({
 // ─── Chat Panel ───────────────────────────────────────────────────────────────
 
 function ChatPanel({
+  captures,
   captureCount,
   corpusTitles,
   messages,
@@ -457,6 +492,7 @@ function ChatPanel({
   onCitationClick,
   onClearMessages,
 }: {
+  captures: CaptureWithEnrichment[]
   captureCount: number
   corpusTitles: string[]
   messages: PursuitConversation[]
@@ -555,19 +591,51 @@ function ChatPanel({
                 )
               }
 
-              const citations = messageCitations.get(msg.id)
+              const citations =
+                messageCitations.get(msg.id) ??
+                parseCitationsFromContent(msg.content, captures)
+              const displayContent = stripCitationsBlock(msg.content)
               const isSaving = savingMessageId === msg.id
 
               return (
                 <div key={msg.id} className="flex flex-col items-start group">
                   <div className="max-w-[90%] px-3 py-2.5 rounded-xl rounded-bl-sm bg-charcoal/[0.06] dark:bg-white/[0.06] border border-charcoal/8 dark:border-white/7 text-charcoal dark:text-[#f0ede8] font-sans text-xs leading-relaxed">
                     {renderMarkdown(
-                      msg.content,
-                      citations?.map(c => c.quote).filter((q): q is string => Boolean(q)) ?? [],
+                      displayContent,
+                      citations.map(c => c.quote).filter((q): q is string => Boolean(q)),
                       [
                         ...corpusTitles,
-                        ...(citations?.map(c => c.title).filter((t): t is string => Boolean(t)) ?? []),
+                        ...citations.map(c => c.title).filter((t): t is string => Boolean(t)),
                       ],
+                    )}
+
+                    {/* Linked captures — title + quote, opens thought on click */}
+                    {citations.length > 0 && (
+                      <div className="mt-3 pt-2.5 border-t border-charcoal/8 dark:border-white/7 flex flex-col gap-1.5">
+                        <p className="font-sans text-[9px] font-medium uppercase tracking-widest text-charcoal/30 dark:text-[#5c5a57]">
+                          From your captures
+                        </p>
+                        {citations.map(c => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => onCitationClick(c.id, c.quote)}
+                            className="w-full text-left rounded-lg px-2.5 py-2 border border-charcoal/10 dark:border-white/[0.08] bg-cream/60 dark:bg-white/[0.03] hover:border-terra/35 hover:bg-terra/[0.04] transition-colors"
+                          >
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              <span className="w-1 h-1 rounded-full bg-terra shrink-0" />
+                              <span className="font-sans text-[11px] font-medium text-charcoal dark:text-[#f0ede8] truncate">
+                                {c.title ?? relativeTime(c.captured_at)}
+                              </span>
+                            </span>
+                            {c.quote && (
+                              <span className={`${CAPTURE_QUOTE_SERIF} block mt-1 pl-2.5 line-clamp-2`}>
+                                &ldquo;{c.quote}&rdquo;
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
 
@@ -577,32 +645,13 @@ function ChatPanel({
                       Ki · {relativeTime(msg.created_at)}
                     </span>
                     <button
-                      onClick={() => onSaveMessage(msg.id, msg.content)}
+                      onClick={() => onSaveMessage(msg.id, displayContent)}
                       disabled={isSaving}
                       className="font-sans text-[9px] text-charcoal/30 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-40"
                     >
                       {isSaving ? 'saving…' : 'save to Ki'}
                     </button>
                   </div>
-
-                  {/* Citation chips */}
-                  {citations && citations.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2 px-1">
-                      {citations.map(c => (
-                        <button
-                          key={c.id}
-                          onClick={() => onCitationClick(c.id, c.quote)}
-                          title={c.quote ?? undefined}
-                          className="flex items-center gap-1.5 font-sans text-[10px] px-2 py-0.5 rounded-full border border-charcoal/12 dark:border-white/8 text-charcoal/45 dark:text-[#5c5a57] hover:border-terra/40 hover:text-terra dark:hover:text-terra dark:hover:border-terra/40 transition-all bg-transparent"
-                        >
-                          <span className="w-1 h-1 rounded-full bg-current flex-shrink-0" />
-                          <span className="max-w-[160px] truncate">
-                            {c.title ?? (c.quote ? `${c.quote.slice(0, 32)}…` : 'capture')}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -778,7 +827,9 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
       if (fnError) throw fnError
 
       const agentData = data as { response: string; citations?: Citation[] }
-      const kiResponse = agentData.response ?? 'Something went wrong. Please try again.'
+      const kiResponse = stripCitationsBlock(
+        agentData.response ?? 'Something went wrong. Please try again.',
+      )
 
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -872,6 +923,7 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
 
           <Panel defaultSize={65} minSize={35} className="overflow-hidden">
             <ChatPanel
+              captures={captures}
               captureCount={captures.length}
               corpusTitles={captures.map(c => c.title).filter((t): t is string => Boolean(t?.trim()))}
               messages={messages}

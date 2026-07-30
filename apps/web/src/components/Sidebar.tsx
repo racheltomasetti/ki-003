@@ -144,7 +144,7 @@ export function Sidebar({
         {/* Pursuits section */}
         <div className={['mt-4', !collapsed ? 'mx-3.5 pt-1' : 'flex justify-center mb-[11px]'].join(' ')}>
           {!collapsed
-            ? <span className="block text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em] mb-2">Pursuits</span>
+            ? <span className="block text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em] mb-2">in pursuit of</span>
             : <span className="block w-4 border-t border-charcoal/15 dark:border-white/[0.08]" />
           }
         </div>

@@ -216,11 +216,7 @@ Rules:
     const claudeData = await claudeRes.json()
     const rawText: string = claudeData.content?.[0]?.text ?? ''
 
-    // ── Parse response ────────────────────────────────────────────────────────
-    const responseMatch = rawText.match(/<response>([\s\S]*?)<\/response>/)
-    const response = responseMatch?.[1]?.trim() ?? rawText
-
-    // ── Parse citations ───────────────────────────────────────────────────────
+    // ── Parse citations (before response — strip so they never leak into chat) ─
     const citationsMatch = rawText.match(/<citations>([\s\S]*?)<\/citations>/)
     let citations: Array<{ id: string; title: string | null; captured_at: string; quote?: string }> = []
 
@@ -245,6 +241,15 @@ Rules:
         // Malformed JSON — citations stay empty
       }
     }
+
+    // ── Parse response — never return the raw citations block to the client ───
+    const withoutCitations = rawText
+      .replace(/<citations>[\s\S]*?<\/citations>/g, '')
+      .trim()
+    const responseMatch = withoutCitations.match(/<response>([\s\S]*?)<\/response>/)
+    const response = (responseMatch?.[1] ?? withoutCitations)
+      .replace(/<\/?response>/g, '')
+      .trim()
 
     return new Response(
       JSON.stringify({ response, citations }),
