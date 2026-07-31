@@ -44,22 +44,9 @@ async function transcribeAudio(uri: string): Promise<string> {
     name: 'recording.m4a',
     type: 'audio/m4a',
   } as unknown as Blob)
-  formData.append('model', 'whisper-1')
-  formData.append('language', 'en')
 
-  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
-    },
-    body: formData,
-  })
-
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Transcription failed: ${text}`)
-  }
-  const data = await response.json()
+  const { data, error } = await supabase.functions.invoke('transcribe', { body: formData })
+  if (error) throw new Error(`Transcription failed: ${error.message}`)
   return data.text as string
 }
 

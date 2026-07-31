@@ -2,7 +2,7 @@
 
 ## What Ki Is
 
-Ki is a Self awareness tool. A context builder. A thinking partner for anyone in pursuit of the life they desire.
+Ki is a digital mind. A mind explorer. A tool for the curious — people who are intentionally creating something in their life, whether that is external (a product, a business, a creative work) or internal (a mindset, a habit, an understanding of self). A Self awareness tool. A context builder. A thinking partner for anyone in pursuit of the life they desire.
 
 It is not a note-taking app. It is not a journal. It is not a second brain or a productivity system. It is the space where your raw, unfinished thinking becomes something you can actually work with — where captures accumulate into clarity, and clarity becomes action.
 
@@ -61,6 +61,16 @@ What becomes possible as the corpus deepens is still being discovered. That is p
 
 ---
 
+## The Mind Spans Everything
+
+Ki is not just a thinking tool. It is a digital manifestation of the mind — and the mind spans everything. Thoughts, energy, emotions, the body, the cycle, what inspires you, what drains you. All of it is data. All of it is connected.
+
+Every capture is stamped with where you are in your cycle — your menstrual cycle if you track it, the moon's if you don't. The cycle is a point of connection, not a feature. It has no home page. It lives underneath everything: the corpus, the chat, the patterns. Phases are never stored — they are derived, and they refine as Ki learns your patterns.
+
+This is the correlation no other tool holds: what moves through your mind, mapped against where your body is. Other tools store but do not think back. None of them see the whole person.
+
+---
+
 ## The Flow
 
 Capture anywhere. Think deeply on the web.
@@ -72,9 +82,10 @@ Capture is available on both mobile and web. Mobile exists for convenience — i
 3. Something resonates — you capture it: voice, text, image, observation 
 4. Ki holds it, enriches it, connects it to what you are already carrying 
 5. The corpus deepens over time 
-6. Ki surfaces what is emerging — patterns, tensions, clarity 
-7. You act, create, decide, become 
-8. New captures follow. The cycle continues.
+6. Ki maps what is moving through you against where you are in your cycle — patterns invisible in a single day become visible across cycles 
+7. Ki surfaces what is emerging — patterns, tensions, clarity 
+8. You act, create, decide, become 
+9. New captures follow. The cycle continues.
 
 ---
 

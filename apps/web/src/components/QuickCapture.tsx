@@ -25,18 +25,14 @@ function formatRecordingDuration(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
-async function transcribeBlob(blob: Blob): Promise<string> {
+async function transcribeBlob(
+  supabase: ReturnType<typeof createClient>,
+  blob: Blob,
+): Promise<string> {
   const formData = new FormData()
   formData.append('file', blob, 'recording.webm')
-  formData.append('model', 'whisper-1')
-  formData.append('language', 'en')
-  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}` },
-    body: formData,
-  })
-  if (!res.ok) throw new Error(`Transcription failed: ${res.status}`)
-  const data = await res.json()
+  const { data, error } = await supabase.functions.invoke('transcribe', { body: formData })
+  if (error) throw error
   return data.text as string
 }
 
@@ -351,7 +347,7 @@ export function QuickCapture({ pursuits, userId }: Props) {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
         setVoiceState('processing')
         try {
-          const t = await transcribeBlob(blob)
+          const t = await transcribeBlob(supabase, blob)
           setBody(t)
           setInEditor(true)
         } catch {
@@ -369,7 +365,7 @@ export function QuickCapture({ pursuits, userId }: Props) {
     } catch {
       setError('Microphone access is required for voice capture.')
     }
-  }, [])
+  }, [supabase])
 
   const stopRecording = useCallback(() => {
     mediaRecorderRef.current?.stop()

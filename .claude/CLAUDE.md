@@ -254,6 +254,8 @@ deleted  → permanent, cascades to enrichments
 
 **pursuit-agent** — called from the pursuit workspace. Reads pursuit corpus + core question + memory document → Claude Sonnet with tool calling → returns response + optional artifact + referenced_capture_ids.
 
+**transcribe** — called from web QuickCapture and mobile VoiceCapture. Receives audio as multipart form-data, verifies the user's JWT, calls Whisper server-side, returns `{ text }`. The OpenAI key lives only in Supabase secrets — never `NEXT_PUBLIC_*` / `EXPO_PUBLIC_*` env vars.
+
 ---
 
 ## Supabase Workflow
