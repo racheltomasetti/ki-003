@@ -256,6 +256,8 @@ deleted  → permanent, cascades to enrichments
 
 **transcribe** — called from web QuickCapture and mobile VoiceCapture. Receives audio as multipart form-data, verifies the user's JWT, calls Whisper server-side, returns `{ text }`. The OpenAI key lives only in Supabase secrets — never `NEXT_PUBLIC_*` / `EXPO_PUBLIC_*` env vars.
 
+**re-enrich** — called from Profile → Settings → Corpus. Re-runs enrichment over the caller's corpus one page per invocation (client loops on `next_cursor`). Invokes the deployed enrich-capture per capture — single source of truth. Enrichment extraction uses a forced tool call (`record_enrichment`) at temperature 0 with enums in the schema; the embedding is generated before extraction so RAG survives extraction failures.
+
 ---
 
 ## Supabase Workflow

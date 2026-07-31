@@ -386,6 +386,98 @@ function ProfileTab({
 
 // ─── Settings tab ─────────────────────────────────────────────────────────────
 
+// ─── Re-enrich card ──────────────────────────────────────────────────────────
+// Loops the re-enrich Edge Function page by page until the cursor runs out.
+// Safe to re-run: captures are immutable — only enrichments are rewritten.
+
+interface ReEnrichPage {
+  processed: number
+  enriched: number
+  failed: number
+  next_cursor: string | null
+  total: number
+}
+
+function ReEnrichCard() {
+  const [running, setRunning] = useState(false)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [result, setResult] = useState<{ enriched: number; failed: number } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const runReEnrich = async () => {
+    setRunning(true)
+    setError(null)
+    setResult(null)
+    const supabase = createClient()
+    let cursor: string | null = null
+    let done = 0
+    let enriched = 0
+    let failed = 0
+    try {
+      do {
+        const { data, error: fnError } = await supabase.functions.invoke('re-enrich', {
+          body: { limit: 10, cursor },
+        })
+        if (fnError) throw fnError
+        const page = data as ReEnrichPage
+        done += page.processed
+        enriched += page.enriched
+        failed += page.failed
+        cursor = page.next_cursor
+        setProgress({ done, total: page.total })
+      } while (cursor)
+      setResult({ enriched, failed })
+    } catch (err) {
+      console.error('re-enrich error:', err)
+      setError('Re-enrichment stopped early. Run it again — finished captures keep their fresh enrichment.')
+    } finally {
+      setRunning(false)
+      setProgress(null)
+    }
+  }
+
+  return (
+    <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 py-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="font-sans text-[13px] font-medium text-charcoal dark:text-[#f0ede8] mb-[3px]">Re-enrich corpus</div>
+          <div className="font-sans text-[11px] text-charcoal/40 dark:text-[#5c5a57] leading-relaxed">
+            Re-runs the enrichment pipeline over every capture — themes, sentiment, energy, intent, and
+            pursuit connections extracted fresh. Your captures themselves are never altered.
+          </div>
+        </div>
+        <button
+          onClick={runReEnrich}
+          disabled={running}
+          className={[
+            'shrink-0 px-4 py-[7px] rounded-[10px] font-sans text-[11.5px] font-medium transition-all',
+            running
+              ? 'bg-charcoal/10 dark:bg-white/[0.08] text-charcoal/40 dark:text-[#9e9b96] cursor-default'
+              : 'bg-terra text-white hover:opacity-90 cursor-pointer shadow-sm',
+          ].join(' ')}
+        >
+          {running
+            ? progress
+              ? `Enriching ${progress.done}/${progress.total}…`
+              : 'Enriching…'
+            : 'Re-enrich all captures'}
+        </button>
+      </div>
+      {result && (
+        <div className="mt-3 font-sans text-[11px] text-sage">
+          Re-enriched {result.enriched} capture{result.enriched === 1 ? '' : 's'}
+          {result.failed > 0 && (
+            <span className="text-terra"> · {result.failed} failed — run again to retry</span>
+          )}
+        </div>
+      )}
+      {error && (
+        <div className="mt-3 font-sans text-[11px] text-terra">{error}</div>
+      )}
+    </div>
+  )
+}
+
 function SettingsTab({
   mounted,
   accentColor,
@@ -480,6 +572,14 @@ function SettingsTab({
             })}
           </div>
         </div>
+      </div>
+
+      {/* Corpus */}
+      <div>
+        <div className="font-sans text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.08em] mb-4">
+          Corpus
+        </div>
+        <ReEnrichCard />
       </div>
 
     </div>

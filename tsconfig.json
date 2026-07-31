@@ -11,5 +11,12 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "exclude": ["node_modules", "**/node_modules", "**/dist", "**/.next"]
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "**/dist",
+    "**/.next",
+    "supabase/functions"
+  ]
 }
+
