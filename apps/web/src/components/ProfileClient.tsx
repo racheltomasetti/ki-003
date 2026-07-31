@@ -20,87 +20,6 @@ const ACCENT_COLORS = [
   { label: 'Sage',    value: '#67934d' },
 ]
 
-// ─── Memory document sections ─────────────────────────────────────────────────
-// Order and keys are stable — they determine parse/serialize order.
-
-const MEMORY_SECTIONS = [
-  {
-    key: 'who_you_are',
-    title: 'Who you are',
-    subtitle: 'How do you see yourself? How do you think and move through the world? Not demographics — the operating system underneath everything.',
-    placeholder: 'How do you process experience, make decisions, relate to building and becoming…',
-  },
-  {
-    key: 'building_or_becoming',
-    title: 'What you are building or becoming',
-    subtitle: 'Both externally and internally — the project, the work, and the version of yourself you are moving toward.',
-    placeholder: 'The software, the business, the creative work. And the mindset, the habit, the identity shift…',
-  },
-  {
-    key: 'carrying_right_now',
-    title: 'What you are carrying right now',
-    subtitle: 'The questions most alive for you. Pursuits, curiosities, things you keep returning to. No structure imposed.',
-    placeholder: 'What you\'re thinking about, exploring, or trying to figure out…',
-  },
-  {
-    key: 'tried_and_lacking',
-    title: 'What you have tried and found lacking',
-    subtitle: 'Tools, systems, or approaches that haven\'t worked for you — and why. Tells Ki what not to be.',
-    placeholder: 'Journaling apps, productivity systems, note-taking tools, approaches to thinking…',
-  },
-  {
-    key: 'what_you_want_from_ki',
-    title: 'What you want from Ki',
-    subtitle: 'What drew you here? What would make this feel worth returning to? A felt sense, not a feature request.',
-    placeholder: 'What\'s missing. What kind of thinking partner you need…',
-  },
-] as const
-
-type SectionKey = typeof MEMORY_SECTIONS[number]['key']
-
-// ─── Memory document serialization ───────────────────────────────────────────
-// Format: "## Section Title\nContent\n\n## Next Section\nContent"
-
-function parseMemoryDocument(doc: string | null): Record<SectionKey, string> {
-  const result = {} as Record<SectionKey, string>
-  for (const section of MEMORY_SECTIONS) {
-    result[section.key] = ''
-  }
-
-  if (!doc) return result
-
-  for (let i = 0; i < MEMORY_SECTIONS.length; i++) {
-    const section = MEMORY_SECTIONS[i]
-    const header = `## ${section.title}\n`
-    const start = doc.indexOf(header)
-    if (start === -1) continue
-
-    const contentStart = start + header.length
-
-    // Find the next section header
-    let contentEnd = doc.length
-    for (let j = i + 1; j < MEMORY_SECTIONS.length; j++) {
-      const nextHeader = `## ${MEMORY_SECTIONS[j].title}\n`
-      const nextStart = doc.indexOf(nextHeader, contentStart)
-      if (nextStart !== -1) {
-        contentEnd = nextStart
-        break
-      }
-    }
-
-    result[section.key] = doc.slice(contentStart, contentEnd).trim()
-  }
-
-  return result
-}
-
-function serializeMemoryDocument(sections: Record<SectionKey, string>): string {
-  return MEMORY_SECTIONS
-    .map(s => `## ${s.title}\n${sections[s.key] ?? ''}`)
-    .join('\n\n')
-    .trim()
-}
-
 // ─── Sub-nav ──────────────────────────────────────────────────────────────────
 
 const TABS: { key: Tab; label: string }[] = [
@@ -109,136 +28,207 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'integrations', label: 'Integrations' },
 ]
 
-// ─── Memory card ──────────────────────────────────────────────────────────────
+function formatSaved(iso: string) {
+  const d = new Date(iso)
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const h24 = d.getHours()
+  const h12 = h24 % 12 || 12
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  const ampm = h24 < 12 ? 'AM' : 'PM'
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} @ ${String(h12).padStart(2, '0')}:${mm} ${ampm}`
+}
 
-function MemoryCard({
-  title,
-  subtitle,
-  placeholder,
-  value,
-  onSave,
+// ─── Memory agent chat (side panel) ───────────────────────────────────────────
+
+interface MemoryChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
+
+function MemoryAgentPanel({
+  draft,
+  onDraftUpdate,
+  onClose,
 }: {
-  title: string
-  subtitle: string
-  placeholder: string
-  value: string
-  onSave: (val: string) => Promise<void>
+  draft: string
+  onDraftUpdate: (next: string) => void
+  onClose: () => void
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(value)
-  const [saving, setSaving] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const supabase = createClient()
+  const [messages, setMessages] = useState<MemoryChatMessage[]>([])
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const endRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Sync external value changes (e.g. after a successful save from another card)
   useEffect(() => {
-    if (!editing) setDraft(value)
-  }, [value, editing])
+    endRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, sending])
 
-  // Auto-focus + resize on open
-  useEffect(() => {
-    if (editing && textareaRef.current) {
-      textareaRef.current.focus()
-      textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+  const send = async (raw: string) => {
+    const content = raw.trim()
+    if (!content || sending) return
+
+    const userMsg: MemoryChatMessage = {
+      id: `u-${Date.now()}`,
+      role: 'user',
+      content,
     }
-  }, [editing])
+    const history = messages.map(m => ({ role: m.role, content: m.content }))
+    setMessages(prev => [...prev, userMsg])
+    setInput('')
+    setSending(true)
 
-  const handleEdit = () => {
-    setDraft(value)
-    setEditing(true)
-  }
+    try {
+      const { data, error } = await supabase.functions.invoke('memory-agent', {
+        body: {
+          message: content,
+          conversation_history: history,
+          current_document: draft,
+        },
+      })
 
-  const handleCancel = () => {
-    setDraft(value)
-    setEditing(false)
-  }
+      if (error) throw error
 
-  const handleSave = async () => {
-    setSaving(true)
-    await onSave(draft.trim())
-    setSaving(false)
-    setEditing(false)
-  }
+      const agentData = data as {
+        response?: string
+        draft?: string
+        summary?: string
+      }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Escape') handleCancel()
-    // Cmd+Enter or Ctrl+Enter to save
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault()
-      handleSave()
+      if (typeof agentData.draft === 'string' && agentData.draft.trim()) {
+        onDraftUpdate(agentData.draft)
+      }
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          content: agentData.response?.trim()
+            || agentData.summary
+            || 'Updated your draft — review it in the editor.',
+        },
+      ])
+    } catch (err) {
+      console.error('memory-agent error:', err)
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          content: 'Something went wrong. Please try again.',
+        },
+      ])
+    } finally {
+      setSending(false)
+      inputRef.current?.focus()
     }
   }
-
-  const autoResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDraft(e.target.value)
-    e.target.style.height = 'auto'
-    e.target.style.height = `${e.target.scrollHeight}px`
-  }
-
-  const isEmpty = !value
 
   return (
-    <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] overflow-hidden">
-      {/* Card header */}
-      <div className="flex items-center justify-between px-4 py-[13px] border-b border-charcoal/8 dark:border-white/[0.07]">
-        <div className="font-sans text-[13px] font-medium text-charcoal dark:text-[#f0ede8]">{title}</div>
-        {!editing && (
-          <button
-            onClick={handleEdit}
-            className="font-sans text-[11px] text-charcoal/35 dark:text-[#5c5a57] hover:text-terra transition-colors cursor-pointer"
-          >
-            {isEmpty ? 'add' : 'edit'}
-          </button>
-        )}
+    <aside className="w-[360px] shrink-0 h-full flex flex-col border-l border-charcoal/8 dark:border-white/[0.07] bg-cream dark:bg-[#161514]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-charcoal/8 dark:border-white/[0.07] shrink-0">
+        <div>
+          <div className="font-sans text-[12px] font-medium text-charcoal dark:text-[#f0ede8]">
+            Build with Ki
+          </div>
+          <div className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] mt-0.5">
+            Grounded in your captures · edits the draft live
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="font-sans text-[11px] text-charcoal/40 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#f0ede8] transition-colors"
+        >
+          Close
+        </button>
       </div>
 
-      {/* Card body */}
-      <div className="px-4 py-[13px]">
-        {editing ? (
-          <div className="flex flex-col gap-3">
-            <p className="font-sans text-[11px] text-charcoal/40 dark:text-[#5c5a57] leading-relaxed">
-              {subtitle}
-            </p>
-            <textarea
-              ref={textareaRef}
-              value={draft}
-              onChange={autoResize}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              rows={4}
-              className="w-full font-serif text-[13px] font-light text-charcoal dark:text-[#f0ede8] bg-transparent resize-none outline-none placeholder-charcoal/25 dark:placeholder-[#5c5a57] leading-[1.8]"
-            />
-            <div className="flex items-center gap-3 pt-1 border-t border-charcoal/8 dark:border-white/[0.07]">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="font-sans text-[11px] font-medium text-terra hover:opacity-80 transition-opacity disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={saving}
-                className="font-sans text-[11px] text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#f0ede8] transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <span className="ml-auto font-sans text-[10px] text-charcoal/25 dark:text-[#5c5a57]">
-                ⌘↵ to save
-              </span>
-            </div>
-          </div>
-        ) : isEmpty ? (
-          <p className="font-serif text-[13px] font-light italic text-charcoal/30 dark:text-[#5c5a57] leading-[1.8]">
-            Not set yet.
-          </p>
-        ) : (
-          <p className="font-serif text-[13px] font-light text-charcoal/70 dark:text-[#9e9b96] leading-[1.8] whitespace-pre-wrap">
-            {value}
+      <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
+        {messages.length === 0 && !sending && (
+          <p className="px-1 font-serif text-[13px] font-light italic text-charcoal/45 dark:text-[#9e9b96] leading-relaxed">
+            Tell Ki who you are, what you&apos;re carrying, or how you want this document to read. It will write into the editor as you go — Save when it feels right.
           </p>
         )}
+
+        {messages.map(m => (
+          <div
+            key={m.id}
+            className={m.role === 'user' ? 'self-end max-w-[90%]' : 'self-start max-w-[95%]'}
+          >
+            <div
+              className={[
+                'px-3 py-2 rounded-xl font-sans text-[12px] leading-relaxed whitespace-pre-wrap',
+                m.role === 'user'
+                  ? 'bg-terra text-cream rounded-br-sm'
+                  : 'bg-charcoal/[0.05] dark:bg-white/[0.05] border border-charcoal/8 dark:border-white/7 text-charcoal dark:text-[#f0ede8] rounded-bl-sm',
+              ].join(' ')}
+            >
+              {m.content}
+            </div>
+          </div>
+        ))}
+
+        {sending && (
+          <div className="self-start px-3 py-2.5 rounded-xl rounded-bl-sm bg-charcoal/[0.05] dark:bg-white/[0.05] border border-charcoal/8 dark:border-white/7">
+            <div className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-charcoal/30 dark:bg-white/30 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-charcoal/30 dark:bg-white/30 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-charcoal/30 dark:bg-white/30 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        )}
+        <div ref={endRef} />
       </div>
-    </div>
+
+      <div className="shrink-0 px-3 py-3 border-t border-charcoal/8 dark:border-white/[0.07]">
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {[
+            'Help me start this document',
+            'What do my captures say about me?',
+            'Tighten what I have so far',
+          ].map(chip => (
+            <button
+              key={chip}
+              type="button"
+              disabled={sending}
+              onClick={() => void send(chip)}
+              className="font-sans text-[10px] px-2 py-1 rounded-full border border-charcoal/12 dark:border-white/8 text-charcoal/45 dark:text-[#5c5a57] hover:border-terra/40 hover:text-terra transition-colors disabled:opacity-40"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-end gap-2 bg-charcoal/[0.03] dark:bg-[#1d1b1a] border border-charcoal/8 dark:border-white/[0.07] rounded-[12px] px-2.5 py-2 focus-within:border-charcoal/15 dark:focus-within:border-white/15">
+          <textarea
+            ref={inputRef}
+            value={input}
+            disabled={sending}
+            rows={2}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                void send(input)
+              }
+            }}
+            placeholder="Talk to Ki about your memory document…"
+            className="flex-1 bg-transparent border-none outline-none resize-none font-sans text-[12px] text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] leading-relaxed disabled:opacity-50"
+          />
+          <button
+            type="button"
+            disabled={sending || !input.trim()}
+            onClick={() => void send(input)}
+            className="shrink-0 font-sans text-[11px] font-medium text-terra disabled:opacity-35 hover:opacity-80 transition-opacity"
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </aside>
   )
 }
 
@@ -256,75 +246,140 @@ function ProfileTab({
   avatarLetter: string
 }) {
   const supabase = createClient()
-  const [sections, setSections] = useState<Record<SectionKey, string>>(
-    () => parseMemoryDocument(profile?.memory_document ?? null)
-  )
+  const [draft, setDraft] = useState(profile?.memory_document ?? '')
   const [lastSaved, setLastSaved] = useState<string | null>(
     profile?.memory_updated_at ?? null
   )
+  const [saving, setSaving] = useState(false)
+  const [dirty, setDirty] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const handleSaveSection = async (key: SectionKey, value: string) => {
-    const updated = { ...sections, [key]: value }
-    setSections(updated)
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.max(el.scrollHeight, 280)}px`
+  }, [draft])
 
-    const doc = serializeMemoryDocument(updated)
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDraft(e.target.value)
+    setDirty(true)
+  }
+
+  const handleAgentDraft = (next: string) => {
+    setDraft(next)
+    setDirty(true)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
     const userId = (await supabase.auth.getUser()).data.user?.id
-    if (!userId) return
+    if (!userId) {
+      setSaving(false)
+      return
+    }
 
-    const { error } = await updateMemoryDocument(supabase, userId, doc)
+    const { error } = await updateMemoryDocument(supabase, userId, draft.trim())
     if (!error) {
+      setDraft(draft.trim())
       setLastSaved(new Date().toISOString())
+      setDirty(false)
+    }
+    setSaving(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault()
+      void handleSave()
     }
   }
 
-  const formatSaved = (iso: string) => {
-    const d = new Date(iso)
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-  }
-
   return (
-    <div className="px-7 py-[26px] max-w-[620px]">
+    <div className="flex h-full min-h-0">
+      <div className="flex-1 overflow-y-auto px-7 py-[26px]">
+        <div className="max-w-[620px]">
 
-      {/* User header */}
-      <div className="flex items-center gap-[14px] mb-[26px]">
-        <div className="w-[50px] h-[50px] rounded-full bg-terra/10 border border-terra flex items-center justify-center text-[18px] font-semibold text-terra shrink-0">
-          {avatarLetter}
-        </div>
-        <div>
-          <div className="font-serif text-[20px] font-light text-charcoal dark:text-[#f0ede8]">{displayName}</div>
-          <div className="font-sans text-[12px] text-charcoal/40 dark:text-[#5c5a57] mt-[2px]">{userEmail}</div>
-        </div>
-      </div>
-
-      {/* Memory document header */}
-      <div className="flex items-baseline justify-between mb-[10px]">
-        <div className="font-sans text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.08em]">
-          Memory document
-        </div>
-        {lastSaved && (
-          <div className="font-sans text-[10px] text-charcoal/30 dark:text-[#5c5a57]">
-            Saved {formatSaved(lastSaved)}
+          {/* User header */}
+          <div className="flex items-center gap-[14px] mb-[26px]">
+            <div className="w-[50px] h-[50px] rounded-full bg-terra/10 border border-terra flex items-center justify-center text-[18px] font-semibold text-terra shrink-0">
+              {avatarLetter}
+            </div>
+            <div>
+              <div className="font-serif text-[20px] font-light text-charcoal dark:text-[#f0ede8]">{displayName}</div>
+              <div className="font-sans text-[12px] text-charcoal/40 dark:text-[#5c5a57] mt-[2px]">{userEmail}</div>
+            </div>
           </div>
-        )}
-      </div>
-      <p className="font-sans text-[12px] text-charcoal/40 dark:text-[#5c5a57] mb-4 leading-relaxed">
-        Ki reads this before every conversation. Fill it in over time — it does not need to be complete on day one.
-      </p>
 
-      {/* Section cards */}
-      <div className="space-y-[10px]">
-        {MEMORY_SECTIONS.map((s) => (
-          <MemoryCard
-            key={s.key}
-            title={s.title}
-            subtitle={s.subtitle}
-            placeholder={s.placeholder}
-            value={sections[s.key]}
-            onSave={(val) => handleSaveSection(s.key, val)}
-          />
-        ))}
+          {/* Memory document header */}
+          <div className="flex items-baseline justify-between gap-3 mb-[10px]">
+            <div className="font-sans text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.08em]">
+              Memory document
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {lastSaved && (
+                <div className="font-sans text-[10px] text-charcoal/30 dark:text-[#5c5a57]">
+                  Saved {formatSaved(lastSaved)}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setPanelOpen(v => !v)}
+                className={[
+                  'font-sans text-[11px] font-medium transition-colors',
+                  panelOpen
+                    ? 'text-terra'
+                    : 'text-charcoal/45 dark:text-[#9e9b96] hover:text-terra',
+                ].join(' ')}
+              >
+                {panelOpen ? 'Hide Ki' : 'Build with Ki'}
+              </button>
+            </div>
+          </div>
+          <p className="font-sans text-[12px] text-charcoal/40 dark:text-[#5c5a57] mb-4 leading-relaxed">
+            Ki reads this before every conversation. Write it as markdown — or open Build with Ki and shape it from your captures. Save when it feels right.
+          </p>
+
+          <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] overflow-hidden">
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Start writing your memory document…"
+              rows={12}
+              className="w-full min-h-[280px] px-4 py-[14px] font-serif text-[13px] font-light text-charcoal dark:text-[#f0ede8] bg-transparent resize-none outline-none placeholder-charcoal/25 dark:placeholder-[#5c5a57] leading-[1.8]"
+            />
+            <div className="flex items-center gap-3 px-4 py-3 border-t border-charcoal/8 dark:border-white/[0.07]">
+              <button
+                onClick={() => void handleSave()}
+                disabled={saving || !dirty}
+                className="font-sans text-[11px] font-medium text-terra hover:opacity-80 transition-opacity disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              {dirty && (
+                <span className="font-sans text-[10px] text-charcoal/35 dark:text-[#5c5a57]">
+                  Unsaved changes
+                </span>
+              )}
+              <span className="ml-auto font-sans text-[10px] text-charcoal/25 dark:text-[#5c5a57]">
+                Markdown · ⌘↵ to save
+              </span>
+            </div>
+          </div>
+
+        </div>
       </div>
 
+      {panelOpen && (
+        <MemoryAgentPanel
+          draft={draft}
+          onDraftUpdate={handleAgentDraft}
+          onClose={() => setPanelOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -490,8 +545,8 @@ export function ProfileClient({ profile, userEmail, displayName }: ProfileClient
 
       {/* Sub-nav */}
       <div className="w-[180px] shrink-0 border-r border-charcoal/8 dark:border-white/[0.07] flex flex-col bg-charcoal/[0.01] dark:bg-[#0f0e0e]">
-        <div className="px-5 pt-5 pb-2">
-          <div className="font-sans text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em]">
+        <div className="h-[68px] box-border px-5 border-b border-charcoal/10 dark:border-white/[0.07] shrink-0 flex items-center">
+          <div className="font-sans text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em] leading-none">
             Account
           </div>
         </div>
@@ -513,10 +568,10 @@ export function ProfileClient({ profile, userEmail, displayName }: ProfileClient
           ))}
         </nav>
 
-        <div className="px-[14px] py-4 border-t border-charcoal/8 dark:border-white/[0.07] space-y-1">
+        <div className="h-[64px] box-border px-[14px] border-t border-charcoal/8 dark:border-white/[0.07] shrink-0 flex items-center">
           <button
             onClick={handleSignOut}
-            className="w-full text-left px-2 py-[5px] font-sans text-[11px] text-charcoal/35 dark:text-[#5c5a57] hover:text-terra transition-colors rounded-lg hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]"
+            className="w-full text-left px-1.5 py-[6px] font-sans text-[11px] text-charcoal/35 dark:text-[#5c5a57] hover:text-terra transition-colors rounded-[10px] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]"
           >
             Sign out
           </button>
@@ -524,7 +579,7 @@ export function ProfileClient({ profile, userEmail, displayName }: ProfileClient
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className={tab === 'profile' ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-y-auto'}>
         {tab === 'profile' && (
           <ProfileTab
             profile={profile}

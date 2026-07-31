@@ -73,8 +73,8 @@ export function Sidebar({
       {/* Logo — acts as collapse/expand toggle */}
       <div
         className={[
-          'pt-5 pb-4 border-b border-charcoal/10 dark:border-white/[0.07] shrink-0',
-          collapsed ? 'flex justify-center px-2' : 'flex justify-start px-5',
+          'h-[68px] box-border border-b border-charcoal/10 dark:border-white/[0.07] shrink-0 flex items-center',
+          collapsed ? 'justify-center px-2' : 'justify-start px-5',
         ].join(' ')}
       >
         <button
@@ -235,7 +235,7 @@ export function Sidebar({
       </nav>
 
       {/* Footer — profile + theme */}
-      <div className="px-[14px] py-3 border-t border-charcoal/8 dark:border-white/[0.07] shrink-0">
+      <div className="h-[64px] box-border px-[14px] border-t border-charcoal/8 dark:border-white/[0.07] shrink-0 flex items-center">
         {collapsed ? (
           <button
             onClick={() => router.push('/profile')}
@@ -247,7 +247,7 @@ export function Sidebar({
             </div>
           </button>
         ) : (
-          <div className="flex items-center gap-2 px-1.5 py-[6px] rounded-[10px] hover:bg-charcoal/5 dark:hover:bg-[#1d1b1a] transition-colors">
+          <div className="w-full flex items-center gap-2 px-1.5 py-[6px] rounded-[10px] hover:bg-charcoal/5 dark:hover:bg-[#1d1b1a] transition-colors">
             <button
               onClick={() => router.push('/profile')}
               className="min-w-0 flex-1 flex items-center gap-[10px] text-left cursor-pointer"
