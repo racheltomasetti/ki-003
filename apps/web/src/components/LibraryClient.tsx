@@ -174,6 +174,9 @@ function CaptureDetailPanel({
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
+  // Re-enrich (single capture)
+  const [reEnriching, setReEnriching] = useState(false)
+
   // Close menu on outside click
   useEffect(() => {
     if (!menuOpen) return
@@ -202,6 +205,22 @@ function CaptureDetailPanel({
     setDeleteConfirm(false)
     await updateCaptureStatus(supabase, capture.id, 'deleted')
     onDelete()
+  }
+
+  const handleReEnrich = async () => {
+    setMenuOpen(false)
+    setReEnriching(true)
+    try {
+      const { error } = await supabase.functions.invoke('re-enrich', {
+        body: { capture_id: capture.id },
+      })
+      if (error) throw error
+      invalidate()
+    } catch (err) {
+      console.error('re-enrich error:', err)
+    } finally {
+      setReEnriching(false)
+    }
   }
 
   const capturePursuitIds = new Set((capture.capture_pursuits ?? []).map(cp => cp.pursuit_id))
@@ -309,6 +328,18 @@ function CaptureDetailPanel({
                       {starred ? '★' : '☆'}
                     </span>
                     {starred ? 'Unfavorite' : 'Favorite'}
+                  </button>
+
+                  {/* Re-enrich */}
+                  <button
+                    onClick={handleReEnrich}
+                    disabled={reEnriching}
+                    className="w-full text-left flex items-center gap-[10px] px-4 py-[8px] font-sans text-[12px] text-charcoal/65 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.04] dark:hover:bg-white/[0.04] transition-colors disabled:opacity-50 disabled:cursor-default"
+                  >
+                    <span className={['text-[13px]', reEnriching ? 'animate-spin' : ''].join(' ')}>
+                      {reEnriching ? '⟳' : '✳'}
+                    </span>
+                    {reEnriching ? 'Re-enriching…' : 'Re-enrich'}
                   </button>
 
                   {/* Archive */}
