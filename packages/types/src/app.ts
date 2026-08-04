@@ -44,6 +44,10 @@ export type TodoPriority = 'high' | 'medium' | 'low'
 
 export type TodoSource = 'manual' | 'agent'
 
+// Menstrual only for now — widens to include 'lunar' when that phase starts.
+// See "Next: Lunar" in docs/active/cycle-tracker.md.
+export type CycleType = 'menstrual'
+
 // ─── Core entities ───────────────────────────────────────────────────────────
 
 export interface Profile {
@@ -53,6 +57,9 @@ export interface Profile {
   bio: string | null
   memory_document: string | null
   memory_updated_at: string | null
+  cycle_type: CycleType | null
+  average_cycle_length: number | null
+  average_period_length: number | null
   created_at: string
   updated_at: string
 }
@@ -101,6 +108,8 @@ export interface Enrichment {
   enrichment_status: EnrichmentStatus
   processed_at: string | null
   model_used: string | null
+  cycle_day: number | null          // derived, stamped by Postgres — never by the app or Claude
+  cycle_start_date: string | null   // which cycle instance this capture belongs to
   updated_at: string
 }
 
@@ -116,6 +125,29 @@ export interface CaptureTag {
   user_id: string
   created_at: string
   tags?: Tag
+}
+
+// ─── Cycle ───────────────────────────────────────────────────────────────────
+// See docs/active/cycle-tracker.md. period_logs is the immutable source of
+// truth cycle_day is derived from; daily_logs is the logged (vs. inferred)
+// body signal, available regardless of cycle_type.
+
+export interface PeriodLog {
+  id: string
+  user_id: string
+  date: string
+  created_at: string
+}
+
+export interface DailyLog {
+  id: string
+  user_id: string
+  log_date: string
+  energy_level: number | null   // 1-5
+  emotions: string[] | null
+  body_signals: string[] | null
+  created_at: string
+  updated_at: string
 }
 
 export type PursuitStatus = 'active' | 'curiosity' | 'archived'

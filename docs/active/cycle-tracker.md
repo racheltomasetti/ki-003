@@ -27,23 +27,24 @@ Why the day and not the phase:
 
 ---
 
-## Two Cycles — Menstrual or Lunar
+## Menstrual First — Start Specific, Then Scope Outward
 
-The cycle is a point of connection available to everyone.
+This phase builds one cycle type: **menstrual**, derived from the user's own period logs. Not because it's the only cycle that matters — because starting specific and proven beats starting general and unproven. Women's menstrual cycle is the sharpest, most concrete version of "capture correlates with biological cycle." Prove that the correlation is real and valuable there first.
 
-- **Menstrual** — derived from the user's period logs. Personal cycle length. The primary mode.
-- **Lunar** — derived from the sky. ~29.5 days, anchored at the new moon. Requires zero logging, zero setup. For anyone who doesn't menstruate or doesn't want to track — the moon is the cycle.
+`profiles.cycle_type` : `'menstrual' | null` for now. Null means not opted in — captures stamp null, nothing else changes. Opting in later back-stamps the full corpus (it's just date math). The type is written to widen, not to be reworked: `compute_cycle_day()` and every consumer already branch on `cycle_type`, so adding a second value later is additive.
 
-Same stamp, same queries, same correlation views, same agent context. `cycle_day` means "day of your cycle" regardless of which cycle is yours.
+### Next: Lunar, then Universal Cyclic Living
 
-`profiles.cycle_type` : `'menstrual' | 'lunar' | null`. Null means not opted in — captures stamp null, nothing else changes. Opting in later back-stamps the full corpus (it's just date math).
+Once menstrual cycle tracking is working and the correlation is proven, the next cycle type is **lunar** — derived from the sky, ~29.5 days, anchored at the new moon, zero logging, zero setup. It's the natural universal fallback: for anyone who doesn't menstruate, doesn't want to track, or just wants a rhythm to move with. Same stamp, same queries, same correlation views, same agent context — `cycle_day` already means "day of your cycle" regardless of which cycle it is.
+
+Beyond that: Ki as a tool built around **cyclic living** generally — not just two cycle types, but the design principle that a mind (and a life) moves in rhythms, and a tool that understands where you are in yours can meet you there. Starting with women and the menstrual cycle and scoping outward from a proven, specific case to that universal principle is the intended arc — not the other way around.
 
 ---
 
 ## Data Model (migration 017_cycle.sql)
 
 **profiles** — add:
-- `cycle_type` text — `'menstrual' | 'lunar' | null`
+- `cycle_type` text — `'menstrual' | null`
 - `average_cycle_length` int — seeded at onboarding, updated as real cycles complete (rolling average)
 - `average_period_length` int — seeded at onboarding
 
@@ -71,9 +72,7 @@ RLS on every new table, per house rules.
 
 Stamping is **pure Postgres** — no AI, no app code:
 
-- **On enrichment row creation** (the existing `create_pending_enrichment` trigger path): stamp `cycle_day` + `cycle_start_date` from `captured_at`.
-  - *Menstrual:* latest cycle start ≤ `captured_at` (a period_log date with no log on the previous day). `cycle_day` = days between + 1. No period logs yet → null.
-  - *Lunar:* days since a reference new moon (epoch: 2000-01-06 18:14 UTC) mod 29.530588. Day 1 = new moon. No lookups needed.
+- **On enrichment row creation** (the existing `create_pending_enrichment` trigger path): stamp `cycle_day` + `cycle_start_date` from `captured_at` — latest cycle start ≤ `captured_at` (a period_log date with no log on the previous day). `cycle_day` = days between + 1. No period logs yet → null.
 - **On period_logs insert/delete:** re-stamp the user's affected enrichments. A single UPDATE with date math — cheap enough to re-stamp the user's whole corpus if simpler than computing the window.
 - **Rules:** the app never writes cycle stamps. Claude never writes cycle stamps. Postgres does. (Mirrors `time_of_day_cat`: derived, never from the model.)
 
@@ -85,9 +84,8 @@ Rejected alternative: stamping inside the `enrich-capture` edge function. It wou
 
 Port terra-001's `phaseUtils.ts` + `cycleUtils.ts` — pure functions, zero app dependencies.
 
-- **Menstrual:** 4-phase resolution (menstruation / follicular / ovulation / luteal) from `cycle_day` + `average_cycle_length` + `average_period_length`. Ovulation estimated at length − 14; fertile window ~3 days before to 1 day after.
-- **Lunar:** New (≈ days 1–4) / Waxing (≈ 5–14) / Full (≈ 15–17) / Waning (≈ 18–29). Deliberately mirrors the menstrual arc — rest, build, peak, release — so every consumer works identically.
-- Shared return shape (`{ phase, label, day, length }`); UI, corpus filters, and agents are cycle-type agnostic.
+- **4-phase resolution** (menstruation / follicular / ovulation / luteal) from `cycle_day` + `average_cycle_length` + `average_period_length`. Ovulation estimated at length − 14; fertile window ~3 days before to 1 day after.
+- Returns `{ phase, label, day, length }`, where `phase` is an abstracted vocabulary — rest / build / peak / release — rather than the clinical term. Reads better in Ki's voice, and is the vocabulary lunar phases will map onto when that phase starts, so nothing here needs rework later — just a second branch.
 
 **v2 — personalized phases:** boundaries adjusted from the user's own accumulated data (logged body signals, energy patterns across completed cycles) rather than population averages. This is why phases are never stored: when this lands, every capture's phase everywhere refines instantly.
 
@@ -98,10 +96,10 @@ Port terra-001's `phaseUtils.ts` + `cycleUtils.ts` — pure functions, zero app 
 **Phase A — the data layer.** Migration 017, utils port, SQL stamping. Ship before any UI — correlation data compounds silently from the day this lands, and every week of delay is a week of uncorrelated captures. Back-stamp the existing corpus once period data exists.
 
 **Phase B — input.**
-- Onboarding: "connect to your cycle" — menstrual (last period start, avg cycle length, avg period length) / moon (nothing to configure) / skip.
+- **Onboarding is a new `/onboarding` route — ki-003's first true first-run flow.** Today, sign-up drops straight into the app with no sequence at all. This is the natural home for "connect to your cycle" (last period start, avg cycle length, avg period length / skip), and — since it's being built anyway — the place to finally give new users a first pursuit + core question prompt and a first capture, rather than an empty Home. Full flow design happens when Phase B starts, not before.
 - Period logging: start / ended, with backdating. (terra-001's onboarding + logging flows are the reference; its period-ended edge cases are already solved there.)
 - Daily log widget on Home: energy, emotions, body signals — 30 seconds, once a day.
-- Sidebar indicator: cycle day + derived phase (moon glyph for lunar users).
+- Sidebar indicator: cycle day + derived phase.
 
 **Phase C — the correlation. This is the feature.**
 - Corpus table: `cycle_day` / derived-phase column + filter (it's just another enrichment field — LibraryClient and Explore already know this pattern).
@@ -130,6 +128,7 @@ Port terra-001's `phaseUtils.ts` + `cycleUtils.ts` — pure functions, zero app 
 
 ## Explicitly Not Building Now
 
+- Lunar cycle type, and cyclic living beyond menstrual/lunar — see "Next: Lunar, then Universal Cyclic Living" above. Deliberately sequenced after menstrual is proven, not built alongside it.
 - Oura / wearables — phase 2. terra v1's service layer (`ouraApi` / `ouraAuth` / `ouraSync`) exists and ports cleanly when the time comes; temperature data would also power personalized ovulation detection.
 - Nutrition, fitness, meal planning — terra v1 proved this is a different product.
 - Affirmations, predictions, notifications.
@@ -138,5 +137,5 @@ Port terra-001's `phaseUtils.ts` + `cycleUtils.ts` — pure functions, zero app 
 ## Open Questions
 
 - Do daily_logs also flow through the enrichment pipeline as captures? Current answer: no — they are structured data, not thoughts. A user who wants to say more voice-captures it, and that capture stamps with the same cycle day. Revisit if the boundary feels wrong in use.
-- Lunar anchor: new moon = day 1 is the default. Worth allowing a custom anchor (e.g., full moon start)? Defer until someone asks.
+- Lunar anchor, once that phase starts: new moon = day 1 is the natural default. Worth allowing a custom anchor (e.g., full moon start)? Defer until someone asks.
 - When mobile revives, period logging + daily log must be there day one — the body doesn't wait for a laptop.

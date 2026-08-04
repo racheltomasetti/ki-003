@@ -1,5 +1,7 @@
 import type { TimeOfDayCat } from '@ki/types'
 
+export * from './cycle'
+
 // Derive time_of_day_cat from a timestamp.
 // Used in the enrich-capture Edge Function — never from Claude.
 export function getTimeOfDayCat(date: Date): TimeOfDayCat {
