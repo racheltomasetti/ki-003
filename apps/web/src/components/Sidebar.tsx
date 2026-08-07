@@ -66,21 +66,21 @@ export function Sidebar({
         'h-screen flex flex-col shrink-0 overflow-hidden',
         'bg-cream dark:bg-[#161514] border-r border-charcoal/10 dark:border-white/[0.07]',
         'transition-[width] duration-200 ease-in-out',
-        collapsed ? 'w-[60px]' : 'w-[220px]',
+        collapsed ? 'w-15' : 'w-[13.75rem]',
       ].join(' ')}
     >
 
       {/* Logo — acts as collapse/expand toggle */}
       <div
         className={[
-          'h-[68px] box-border border-b border-charcoal/10 dark:border-white/[0.07] shrink-0 flex items-center',
+          'h-[4.25rem] box-border border-b border-charcoal/10 dark:border-white/[0.07] shrink-0 flex items-center',
           collapsed ? 'justify-center px-2' : 'justify-start px-5',
         ].join(' ')}
       >
         <button
           onClick={() => setCollapsed(v => !v)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="relative h-8 w-[30px] shrink-0 opacity-80 hover:opacity-100 transition-opacity"
+          className="relative h-8 w-[1.875rem] shrink-0 opacity-80 hover:opacity-100 transition-opacity"
         >
           <Image
             src="/logo-light.png"
@@ -102,7 +102,7 @@ export function Sidebar({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-[10px]">
+      <nav className="flex-1 overflow-y-auto py-[0.625rem]">
 
         <div className={collapsed ? 'flex flex-col items-center gap-0.5 px-2' : 'mx-3.5 flex flex-col gap-0.5'}>
           {NAV.map(({ href, label, Icon }) => {
@@ -115,23 +115,23 @@ export function Sidebar({
                 href={href}
                 title={collapsed ? label : undefined}
                 className={[
-                  'rounded-[10px] transition-all duration-150',
+                  'rounded-[0.625rem] transition-all duration-150',
                   collapsed
-                    ? 'flex items-center justify-center w-9 h-9'
-                    : 'flex items-center h-9 px-2.5 text-[13.5px] text-left border-l-2',
+                    ? 'flex items-center justify-center size-9'
+                    : 'relative overflow-hidden flex items-center h-9 px-2.5 text-[0.84375rem] text-left',
                   active
                     ? collapsed
                       ? 'bg-charcoal/[0.06] dark:bg-white/[0.06]'
-                      : 'text-charcoal dark:text-[#f0ede8] bg-charcoal/[0.06] dark:bg-white/[0.06] border-terra font-medium'
+                      : 'text-charcoal dark:text-[#f0ede8] bg-charcoal/[0.06] dark:bg-white/[0.06] font-medium before:absolute before:inset-y-0 before:left-0 before:w-[3.5px] before:bg-accent before:content-[""]'
                     : collapsed
                       ? 'text-charcoal/50 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]'
-                      : 'text-charcoal/50 dark:text-[#9e9b96] border-transparent hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
+                      : 'text-charcoal/50 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
                 ].join(' ')}
               >
                 {collapsed
                   ? (
-                    <span className={active ? 'text-terra' : 'opacity-70'}>
-                      <Icon className="text-[18px]" />
+                    <span className={active ? 'text-accent' : 'opacity-70'}>
+                      <Icon className="block size-[1.125rem]" />
                     </span>
                   )
                   : label
@@ -142,9 +142,9 @@ export function Sidebar({
         </div>
 
         {/* Pursuits section */}
-        <div className={['mt-4', !collapsed ? 'mx-3.5 pt-1' : 'flex justify-center mb-[11px]'].join(' ')}>
+        <div className={['mt-4', !collapsed ? 'mx-3.5 pt-1' : 'flex justify-center mb-[0.6875rem]'].join(' ')}>
           {!collapsed
-            ? <span className="block text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em] mb-2">in pursuit of</span>
+            ? <span className="block text-[0.5625rem] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.1em] mb-2">in pursuit of</span>
             : <span className="block w-4 border-t border-charcoal/15 dark:border-white/[0.08]" />
           }
         </div>
@@ -164,12 +164,12 @@ export function Sidebar({
                   key={pursuit.id}
                   href={`/pursuits/${pursuit.id}`}
                   title={pursuit.name}
-                  className="flex items-center justify-center py-[5px]"
+                  className="flex items-center justify-center py-[0.3125rem]"
                 >
                   <span
                     className={[
-                      'w-[6px] h-[6px] rounded-full shrink-0 ring-offset-1 dark:ring-offset-[#161514]',
-                      active ? 'ring-1 ring-terra/60' : '',
+                      'size-[0.375rem] rounded-full shrink-0 ring-offset-1 dark:ring-offset-[#161514]',
+                      active ? 'ring-1 ring-accent/60' : '',
                     ].join(' ')}
                     style={{ backgroundColor: color }}
                   />
@@ -182,33 +182,33 @@ export function Sidebar({
                 key={pursuit.id}
                 href={`/pursuits/${pursuit.id}`}
                 className={[
-                  'block rounded-[10px] px-2.5 py-2 transition-all duration-150',
+                  'block rounded-[0.625rem] px-2.5 py-2 transition-all duration-150',
                   'border',
                   active
-                    ? 'bg-terra/[0.07] dark:bg-terra/10 border-terra/45 dark:border-terra/50'
+                    ? 'bg-accent/[0.07] dark:bg-accent/10 border-accent/45 dark:border-accent/50'
                     : 'bg-transparent border-charcoal/10 dark:border-white/[0.08] hover:border-charcoal/18 dark:hover:border-white/[0.14] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
                 ].join(' ')}
               >
                 <div className="flex items-start gap-1.5 min-w-0">
                   <span
-                    className="w-[6px] h-[6px] rounded-full shrink-0 mt-[5px]"
+                    className="size-[0.375rem] rounded-full shrink-0 mt-[0.3125rem]"
                     style={{ backgroundColor: color }}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-serif text-[13px] font-light text-charcoal dark:text-[#f0ede8] truncate leading-tight min-w-0 flex-1 text-left">
+                      <span className="font-serif text-[0.8125rem] font-light text-charcoal dark:text-[#f0ede8] truncate leading-tight min-w-0 flex-1 text-left">
                         {pursuit.name}
                       </span>
                       {modeLabel && modeColor && (
                         <span
-                          className="shrink-0 ml-auto text-[8px] font-semibold px-1.5 py-[2px] rounded-full uppercase tracking-[0.06em] border leading-none"
+                          className="shrink-0 ml-auto text-[0.5rem] font-semibold px-1.5 py-[0.125rem] rounded-full uppercase tracking-[0.06em] border leading-none"
                           style={{ borderColor: `${modeColor}66`, color: modeColor }}
                         >
                           {modeLabel}
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 font-sans text-[10px] text-charcoal/35 dark:text-[#5c5a57] leading-none text-left">
+                    <p className="mt-1 font-sans text-[0.625rem] text-charcoal/35 dark:text-[#5c5a57] leading-none text-left">
                       {captureCount} capture{captureCount !== 1 ? 's' : ''}
                     </p>
                   </div>
@@ -221,10 +221,10 @@ export function Sidebar({
             <Link
               href="/pursuits/new"
               className={[
-                'flex items-center justify-center rounded-[10px] px-2.5 py-2.5',
+                'flex items-center justify-center rounded-[0.625rem] px-2.5 py-2.5',
                 'border border-dashed border-charcoal/15 dark:border-white/[0.1]',
-                'font-sans text-[11px] text-charcoal/35 dark:text-[#5c5a57]',
-                'hover:border-terra/40 hover:text-terra transition-colors',
+                'font-sans text-[0.6875rem] text-charcoal/35 dark:text-[#5c5a57]',
+                'hover:border-accent/40 hover:text-accent transition-colors',
               ].join(' ')}
             >
               + new pursuit
@@ -235,27 +235,27 @@ export function Sidebar({
       </nav>
 
       {/* Footer — profile + theme */}
-      <div className="h-[64px] box-border px-[14px] border-t border-charcoal/8 dark:border-white/[0.07] shrink-0 flex items-center">
+      <div className="h-[4rem] box-border px-[0.875rem] border-t border-charcoal/8 dark:border-white/[0.07] shrink-0 flex items-center">
         {collapsed ? (
           <button
             onClick={() => router.push('/profile')}
             title={displayName}
-            className="w-full flex items-center justify-center py-[6px] rounded-[10px] hover:bg-charcoal/5 dark:hover:bg-[#1d1b1a] transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center py-[0.375rem] rounded-[0.625rem] hover:bg-charcoal/5 dark:hover:bg-[#1d1b1a] transition-colors cursor-pointer"
           >
-            <div className="w-7 h-7 rounded-full bg-terra/10 border border-terra flex items-center justify-center text-[11px] font-semibold text-terra shrink-0">
+            <div className="w-7 h-7 rounded-full bg-accent/10 border border-accent flex items-center justify-center text-[0.6875rem] font-semibold text-accent shrink-0">
               {avatarLetter}
             </div>
           </button>
         ) : (
-          <div className="w-full flex items-center gap-2 px-1.5 py-[6px] rounded-[10px] hover:bg-charcoal/5 dark:hover:bg-[#1d1b1a] transition-colors">
+          <div className="w-full flex items-center gap-2 px-1.5 py-[0.375rem] rounded-[0.625rem] hover:bg-charcoal/5 dark:hover:bg-[#1d1b1a] transition-colors">
             <button
               onClick={() => router.push('/profile')}
-              className="min-w-0 flex-1 flex items-center gap-[10px] text-left cursor-pointer"
+              className="min-w-0 flex-1 flex items-center gap-[0.625rem] text-left cursor-pointer"
             >
-              <div className="w-7 h-7 rounded-full bg-terra/10 border border-terra flex items-center justify-center text-[11px] font-semibold text-terra shrink-0">
+              <div className="w-7 h-7 rounded-full bg-accent/10 border border-accent flex items-center justify-center text-[0.6875rem] font-semibold text-accent shrink-0">
                 {avatarLetter}
               </div>
-              <span className="text-[12px] font-medium text-charcoal dark:text-[#f0ede8] truncate">
+              <span className="text-[0.75rem] font-medium text-charcoal dark:text-[#f0ede8] truncate">
                 {displayName}
               </span>
             </button>
@@ -267,31 +267,31 @@ export function Sidebar({
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
               aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               className={[
-                'relative shrink-0 w-[46px] h-[24px] rounded-full cursor-pointer transition-colors',
+                'relative shrink-0 w-[2.875rem] h-[1.5rem] rounded-full cursor-pointer transition-colors',
                 'border border-charcoal/10 dark:border-white/[0.1]',
                 'bg-charcoal/[0.06] dark:bg-white/[0.08]',
               ].join(' ')}
             >
-              <span className="absolute inset-0 flex items-center justify-between px-[5px] pointer-events-none">
+              <span className="absolute inset-0 flex items-center justify-between px-[0.3125rem] pointer-events-none">
                 <MdLightMode
                   className={[
-                    'text-[11px] transition-colors',
-                    mounted && !isDark ? 'text-terra' : 'text-charcoal/30 dark:text-[#5c5a57]',
+                    'text-[0.6875rem] transition-colors',
+                    mounted && !isDark ? 'text-accent' : 'text-charcoal/30 dark:text-[#5c5a57]',
                   ].join(' ')}
                 />
                 <IoMoon
                   className={[
-                    'text-[11px] transition-colors',
-                    mounted && isDark ? 'text-terra' : 'text-charcoal/30 dark:text-[#5c5a57]',
+                    'text-[0.6875rem] transition-colors',
+                    mounted && isDark ? 'text-accent' : 'text-charcoal/30 dark:text-[#5c5a57]',
                   ].join(' ')}
                 />
               </span>
               <span
                 className={[
-                  'absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-cream dark:bg-[#2a2826]',
+                  'absolute top-[0.125rem] left-[0.125rem] size-[1.125rem] rounded-full bg-cream dark:bg-[#2a2826]',
                   'border border-charcoal/10 dark:border-white/[0.12] shadow-sm',
                   'transition-transform duration-200 ease-out',
-                  mounted && isDark ? 'translate-x-[22px]' : 'translate-x-0',
+                  mounted && isDark ? 'translate-x-[1.375rem]' : 'translate-x-0',
                 ].join(' ')}
               />
             </button>

@@ -380,7 +380,7 @@ export default function ExplorePage() {
       className="flex items-center gap-1 font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal/60 dark:hover:text-[#9e9b96] transition-colors whitespace-nowrap"
     >
       {label}
-      <span className={sortCol === col ? 'text-terra' : 'text-charcoal/20 dark:text-white/[0.15]'}>
+      <span className={sortCol === col ? 'text-accent' : 'text-charcoal/20 dark:text-white/[0.15]'}>
         {sortCol === col ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}
       </span>
     </button>
@@ -393,7 +393,7 @@ export default function ExplorePage() {
     label: string,
     active: boolean,
     onClick: () => void,
-    activeClass = 'border-terra text-terra bg-terra/10',
+    activeClass = 'border-accent text-accent bg-accent/10',
   ) => (
     <button
       onClick={onClick}
@@ -568,7 +568,7 @@ export default function ExplorePage() {
                       </td>
                       <td className="px-3 py-[10px] min-w-0 max-w-0">
                         <div className="min-w-0">
-                          <p className="font-sans text-[12px] text-charcoal dark:text-[#f0ede8] truncate group-hover:text-terra transition-colors">
+                          <p className="font-sans text-[12px] text-charcoal dark:text-[#f0ede8] truncate group-hover:text-accent transition-colors">
                             {title}
                           </p>
                           {e?.summary && (
@@ -670,7 +670,7 @@ export default function ExplorePage() {
                     <div className="text-[10px] text-charcoal/35 dark:text-[#5c5a57] mt-[3px] px-[3px]">Ki</div>
                   </>
                 ) : (
-                  <div className="bg-terra/10 border border-terra/20 rounded-[12px] rounded-tr-[2px] px-3 py-[9px] text-[12px] text-charcoal dark:text-[#f0ede8] leading-relaxed whitespace-pre-wrap">
+                  <div className="bg-accent/10 border border-accent/20 rounded-[12px] rounded-tr-[2px] px-3 py-[9px] text-[12px] text-charcoal dark:text-[#f0ede8] leading-relaxed whitespace-pre-wrap">
                     {m.content}
                   </div>
                 )}
@@ -698,7 +698,7 @@ export default function ExplorePage() {
                   key={chip}
                   onClick={() => send(chip)}
                   disabled={sending}
-                  className="font-sans text-[10px] px-[9px] py-[3px] border border-charcoal/8 dark:border-white/[0.07] rounded-full text-charcoal/40 dark:text-[#5c5a57] bg-transparent cursor-pointer hover:border-terra hover:text-terra hover:bg-terra/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="font-sans text-[10px] px-[9px] py-[3px] border border-charcoal/8 dark:border-white/[0.07] rounded-full text-charcoal/40 dark:text-[#5c5a57] bg-transparent cursor-pointer hover:border-accent hover:text-accent hover:bg-accent/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {chip}
                 </button>
@@ -718,7 +718,7 @@ export default function ExplorePage() {
               <button
                 onClick={() => send(input)}
                 disabled={sending || !input.trim()}
-                className="w-[26px] h-[26px] rounded-[7px] bg-terra border-none text-white font-sans text-[12px] cursor-pointer flex items-center justify-center shrink-0 hover:bg-[#b83333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-[26px] h-[26px] rounded-[7px] bg-accent border-none text-on-accent font-sans text-[12px] cursor-pointer flex items-center justify-center shrink-0 hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 ↑
               </button>

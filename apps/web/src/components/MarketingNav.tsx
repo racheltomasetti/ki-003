@@ -22,7 +22,7 @@ export default function MarketingNav() {
         </Link>
         <Link
           href="/sign-up"
-          className="font-sans text-sm font-semibold bg-terra text-cream px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+          className="font-sans text-sm font-semibold bg-accent text-on-accent px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
         >
           Get started
         </Link>

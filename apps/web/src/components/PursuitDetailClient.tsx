@@ -581,7 +581,7 @@ function ChatPanel({
               if (msg.role === 'hero') {
                 return (
                   <div key={msg.id} className="flex flex-col items-end">
-                    <div className="max-w-[85%] px-3 py-2.5 rounded-xl rounded-br-sm bg-terra text-cream font-sans text-xs leading-relaxed">
+                    <div className="max-w-[85%] px-3 py-2.5 rounded-xl rounded-br-sm bg-accent text-on-accent font-sans text-xs leading-relaxed">
                       {msg.content}
                     </div>
                     <span className="font-sans text-[9px] text-charcoal/25 dark:text-[#5c5a57] mt-1 px-1">
@@ -620,10 +620,10 @@ function ChatPanel({
                             key={c.id}
                             type="button"
                             onClick={() => onCitationClick(c.id, c.quote)}
-                            className="w-full text-left rounded-lg px-2.5 py-2 border border-charcoal/10 dark:border-white/[0.08] bg-cream/60 dark:bg-white/[0.03] hover:border-terra/35 hover:bg-terra/[0.04] transition-colors"
+                            className="w-full text-left rounded-lg px-2.5 py-2 border border-charcoal/10 dark:border-white/[0.08] bg-cream/60 dark:bg-white/[0.03] hover:border-accent/35 hover:bg-accent/[0.04] transition-colors"
                           >
                             <span className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-1 h-1 rounded-full bg-terra shrink-0" />
+                              <span className="w-1 h-1 rounded-full bg-accent shrink-0" />
                               <span className="font-sans text-[11px] font-medium text-charcoal dark:text-[#f0ede8] truncate">
                                 {c.title ?? relativeTime(c.captured_at)}
                               </span>
@@ -680,7 +680,7 @@ function ChatPanel({
             <button
               key={s}
               onClick={() => { setInput(s); inputRef.current?.focus() }}
-              className="font-sans text-[10px] px-2.5 py-1 rounded-full border border-charcoal/12 dark:border-white/8 text-charcoal/45 dark:text-[#5c5a57] hover:border-terra/40 hover:text-terra dark:hover:text-terra dark:hover:border-terra/40 transition-all bg-transparent"
+              className="font-sans text-[10px] px-2.5 py-1 rounded-full border border-charcoal/12 dark:border-white/8 text-charcoal/45 dark:text-[#5c5a57] hover:border-accent/40 hover:text-accent dark:hover:text-accent dark:hover:border-accent/40 transition-all bg-transparent"
             >
               {s}
             </button>
@@ -705,7 +705,7 @@ function ChatPanel({
             className={[
               'flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-all mb-0.5',
               input.trim() && !isThinking
-                ? 'bg-terra text-cream hover:bg-terra/90'
+                ? 'bg-accent text-on-accent hover:bg-accent/90'
                 : 'bg-charcoal/8 dark:bg-white/8 text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
             ].join(' ')}
           >
@@ -919,7 +919,7 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
             />
           </Panel>
 
-          <PanelResizeHandle className="w-1.5 flex-shrink-0 bg-charcoal/8 dark:bg-white/7 hover:bg-terra/30 data-[resize-handle-active]:bg-terra/50 transition-colors cursor-col-resize" />
+          <PanelResizeHandle className="w-1.5 flex-shrink-0 bg-charcoal/8 dark:bg-white/7 hover:bg-accent/30 data-[resize-handle-active]:bg-accent/50 transition-colors cursor-col-resize" />
 
           <Panel defaultSize={65} minSize={35} className="overflow-hidden">
             <ChatPanel

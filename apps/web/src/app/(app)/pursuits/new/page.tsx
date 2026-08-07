@@ -191,7 +191,7 @@ export default function NewPursuitPage() {
               className={[
                 'h-1.5 rounded-full transition-all duration-300',
                 i === step
-                  ? 'w-4 bg-terra'
+                  ? 'w-4 bg-accent'
                   : i < step
                   ? 'w-1.5 bg-charcoal/30 dark:bg-cream/30'
                   : 'w-1.5 bg-charcoal/15 dark:bg-cream/15',
@@ -224,7 +224,7 @@ export default function NewPursuitPage() {
                   className={[
                     'font-serif leading-relaxed',
                     i === current.paragraphs.length - 1
-                      ? 'text-[15px] text-charcoal/55 dark:text-cream/55 italic border-l-2 border-terra/30 pl-4'
+                      ? 'text-[15px] text-charcoal/55 dark:text-cream/55 italic border-l-2 border-accent/30 pl-4'
                       : 'text-[16px] text-charcoal/70 dark:text-cream/70',
                   ].join(' ')}
                 >
@@ -255,7 +255,7 @@ export default function NewPursuitPage() {
                 }
               }}
               placeholder={'placeholder' in current ? current.placeholder : ''}
-              className="w-full font-serif text-2xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-terra outline-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-2"
+              className="w-full font-serif text-2xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-accent outline-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-2"
             />
           )}
 
@@ -286,7 +286,7 @@ export default function NewPursuitPage() {
                 onKeyDown={handleTextareaKeyDown}
                 placeholder={'placeholder' in current ? current.placeholder : ''}
                 rows={4}
-                className="w-full font-serif text-xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-terra outline-none resize-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-3"
+                className="w-full font-serif text-xl text-charcoal dark:text-cream bg-transparent border-b-2 border-charcoal/20 dark:border-cream/20 focus:border-accent outline-none resize-none leading-relaxed placeholder:text-charcoal/20 dark:placeholder:text-cream/20 transition-colors pb-3"
               />
             </>
           )}
@@ -309,7 +309,7 @@ export default function NewPursuitPage() {
                     className={[
                       'text-left px-5 py-4 rounded-xl border transition-all',
                       selected
-                        ? 'bg-terra border-terra text-cream'
+                        ? 'bg-accent border-accent text-on-accent'
                         : 'border-charcoal/20 dark:border-cream/20 text-charcoal dark:text-cream hover:border-charcoal/40 dark:hover:border-cream/40',
                     ].join(' ')}
                   >
@@ -317,7 +317,7 @@ export default function NewPursuitPage() {
                     <span
                       className={[
                         'block font-sans text-[12px] mt-1 leading-snug',
-                        selected ? 'text-cream/80' : 'text-charcoal/45 dark:text-cream/45',
+                        selected ? 'text-on-accent/80' : 'text-charcoal/45 dark:text-cream/45',
                       ].join(' ')}
                     >
                       {opt.description}
@@ -343,7 +343,7 @@ export default function NewPursuitPage() {
               className={[
                 'flex items-center gap-2 px-6 py-3 rounded-xl font-sans text-sm font-semibold transition-all',
                 canAdvance && !submitting
-                  ? 'bg-terra text-cream hover:bg-terra/90'
+                  ? 'bg-accent text-on-accent hover:bg-accent/90'
                   : 'bg-charcoal/10 dark:bg-cream/10 text-charcoal/30 dark:text-cream/30 cursor-not-allowed',
               ].join(' ')}
             >

@@ -10,7 +10,7 @@ type VoiceState = 'idle' | 'recording' | 'processing'
 /** Shared card shell — Speak chrome, Speak review, and Write all fill the same footprint */
 const CARD_SHELL =
   'w-full min-h-[112px] flex-1 min-h-0 rounded-[12px] bg-charcoal/5 dark:bg-[#1d1b1a]'
-const CARD_BORDER_SOLID = 'border border-terra/40 dark:border-terra/45'
+const CARD_BORDER_SOLID = 'border border-accent/40 dark:border-accent/45'
 const EDITOR_TEXT =
   'px-[14px] py-3 font-serif text-[13px] font-light text-charcoal dark:text-[#f0ede8] leading-relaxed outline-none resize-none'
 
@@ -61,7 +61,7 @@ function WaveBars({ active }: { active: boolean }) {
           key={i}
           className={[
             'w-[3px] rounded-full origin-bottom',
-            active ? 'bg-terra animate-ki-voice-bar' : 'bg-charcoal/20 dark:bg-white/[0.18]',
+            active ? 'bg-accent animate-ki-voice-bar' : 'bg-charcoal/20 dark:bg-white/[0.18]',
           ].join(' ')}
           style={{
             height: `${Math.round(base * 28)}px`,
@@ -237,7 +237,7 @@ function SaveModal({ body: initialBody, pursuits, userId, onSave, onClose, savin
                     className={[
                       'px-3 py-1.5 rounded-full font-sans text-[12px] border transition-all',
                       active
-                        ? 'bg-terra border-terra text-cream'
+                        ? 'bg-accent border-accent text-on-accent'
                         : 'border-charcoal/10 dark:border-white/[0.08] text-charcoal/55 dark:text-[#9e9b96] hover:border-charcoal/20 dark:hover:border-white/[0.15]',
                     ].join(' ')}
                   >
@@ -278,7 +278,7 @@ function SaveModal({ body: initialBody, pursuits, userId, onSave, onClose, savin
             className={[
               'w-full py-3 rounded-[12px] font-sans text-[13px] font-semibold transition-all',
               canSave && !saving
-                ? 'bg-terra text-cream hover:bg-[#b83333]'
+                ? 'bg-accent text-on-accent hover:opacity-90'
                 : 'bg-charcoal/8 dark:bg-white/[0.06] text-charcoal/30 dark:text-[#5c5a57] cursor-not-allowed',
             ].join(' ')}
           >
@@ -444,7 +444,7 @@ export function QuickCapture({ pursuits, userId }: Props) {
               className={[
                 'px-2.5 py-[3px] rounded-full font-sans text-[11px] font-semibold transition-all',
                 inputMode === 'voice'
-                  ? 'bg-terra text-cream'
+                  ? 'bg-accent text-on-accent'
                   : 'text-charcoal/40 dark:text-[#5c5a57] hover:text-charcoal/60 dark:hover:text-[#9e9b96]',
               ].join(' ')}
             >
@@ -456,7 +456,7 @@ export function QuickCapture({ pursuits, userId }: Props) {
               className={[
                 'px-2.5 py-[3px] rounded-full font-sans text-[11px] font-semibold transition-all',
                 inputMode === 'text'
-                  ? 'bg-terra text-cream'
+                  ? 'bg-accent text-on-accent'
                   : 'text-charcoal/40 dark:text-[#5c5a57] hover:text-charcoal/60 dark:hover:text-[#9e9b96]',
               ].join(' ')}
             >
@@ -493,16 +493,16 @@ export function QuickCapture({ pursuits, userId }: Props) {
                 className={[
                   'inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-sans text-[13px] font-semibold transition-all border',
                   voiceState === 'recording'
-                    ? 'border-terra text-terra bg-transparent hover:bg-terra/8'
+                    ? 'border-accent text-accent bg-transparent hover:bg-accent/8'
                     : voiceState === 'processing'
                       ? 'border-charcoal/15 dark:border-white/[0.12] text-charcoal/40 dark:text-[#5c5a57] cursor-wait'
-                      : 'border-charcoal/20 dark:border-white/[0.16] text-charcoal dark:text-[#f0ede8] bg-transparent hover:border-terra/50',
+                      : 'border-charcoal/20 dark:border-white/[0.16] text-charcoal dark:text-[#f0ede8] bg-transparent hover:border-accent/50',
                 ].join(' ')}
               >
                 <StopGlyph
                   className={
                     voiceState === 'recording'
-                      ? 'bg-terra'
+                      ? 'bg-accent'
                       : voiceState === 'processing'
                         ? 'bg-charcoal/25 dark:bg-white/25'
                         : 'bg-charcoal dark:bg-[#f0ede8]'
@@ -541,7 +541,7 @@ export function QuickCapture({ pursuits, userId }: Props) {
                 CARD_SHELL,
                 'border border-charcoal/10 dark:border-white/[0.08]',
                 EDITOR_TEXT,
-                'focus:border-terra/40 dark:focus:border-terra/45 transition-colors',
+                'focus:border-accent/40 dark:focus:border-accent/45 transition-colors',
                 'placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic placeholder:font-serif',
               ].join(' ')}
             />
@@ -569,8 +569,8 @@ export function QuickCapture({ pursuits, userId }: Props) {
               className={[
                 'px-4 py-[6px] rounded-[10px] font-sans text-[12px] font-semibold transition-all',
                 hasContent
-                  ? 'bg-terra text-cream hover:bg-[#b83333] cursor-pointer'
-                  : 'bg-terra/40 text-cream/70 cursor-not-allowed',
+                  ? 'bg-accent text-on-accent hover:opacity-90 cursor-pointer'
+                  : 'bg-accent/40 text-on-accent/70 cursor-not-allowed',
               ].join(' ')}
             >
               Capture

@@ -93,7 +93,7 @@ function CaptureListItem({
       className={[
         'w-full text-left px-4 py-[12px] border-b border-charcoal/[0.06] dark:border-white/[0.05] transition-colors last:border-b-0',
         selected
-          ? 'bg-terra/[0.07] dark:bg-terra/[0.10]'
+          ? 'bg-accent/[0.07] dark:bg-accent/[0.10]'
           : 'hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
       ].join(' ')}
     >
@@ -105,7 +105,7 @@ function CaptureListItem({
           <div className="flex items-start justify-between gap-2">
             <span className={[
               'text-[13px] leading-snug font-medium truncate',
-              selected ? 'text-terra' : 'text-charcoal dark:text-[#f0ede8]',
+              selected ? 'text-accent' : 'text-charcoal dark:text-[#f0ede8]',
             ].join(' ')}>
               {title}
             </span>
@@ -358,7 +358,7 @@ function CaptureDetailPanel({
                     onClick={handleDelete}
                     className={[
                       'w-full text-left flex items-center gap-[10px] px-4 py-[8px] font-sans text-[12px] transition-colors hover:bg-charcoal/[0.04] dark:hover:bg-white/[0.04]',
-                      deleteConfirm ? 'text-terra font-medium' : 'text-charcoal/45 dark:text-[#5c5a57] hover:text-terra',
+                      deleteConfirm ? 'text-terra font-medium' : 'text-charcoal/45 dark:text-[#5c5a57] hover:text-accent',
                     ].join(' ')}
                   >
                     <span className="text-[13px]">×</span>
@@ -495,7 +495,7 @@ function CaptureDetailPanel({
                   <span className="font-sans text-[11px] text-charcoal/60 dark:text-[#9e9b96]">{pursuit.name}</span>
                   <button
                     onClick={() => handleRemovePursuit(pid)}
-                    className="text-charcoal/25 dark:text-[#5c5a57] hover:text-terra transition-colors text-[13px] leading-none ml-[1px]"
+                    className="text-charcoal/25 dark:text-[#5c5a57] hover:text-accent transition-colors text-[13px] leading-none ml-[1px]"
                   >
                     ×
                   </button>
@@ -507,7 +507,7 @@ function CaptureDetailPanel({
               <div className="relative">
                 <button
                   onClick={() => setPursuitDropdownOpen(v => !v)}
-                  className="font-sans text-[11px] text-charcoal/30 dark:text-[#5c5a57] hover:text-terra transition-colors px-[9px] py-[4px] rounded-full border border-dashed border-charcoal/12 dark:border-white/[0.07] hover:border-terra/30"
+                  className="font-sans text-[11px] text-charcoal/30 dark:text-[#5c5a57] hover:text-accent transition-colors px-[9px] py-[4px] rounded-full border border-dashed border-charcoal/12 dark:border-white/[0.07] hover:border-accent/30"
                 >
                   + add
                 </button>
@@ -552,7 +552,7 @@ function CaptureDetailPanel({
                 </span>
                 <button
                   onClick={() => handleRemoveTag(ct.tag_id)}
-                  className="text-charcoal/25 dark:text-[#5c5a57] hover:text-terra transition-colors text-[13px] leading-none"
+                  className="text-charcoal/25 dark:text-[#5c5a57] hover:text-accent transition-colors text-[13px] leading-none"
                 >
                   ×
                 </button>
@@ -588,7 +588,7 @@ function CaptureDetailPanel({
                     {!tagSuggestions.find(t => t.name === tagQuery.toLowerCase().trim()) && (
                       <button
                         onMouseDown={() => handleAddTag(tagQuery)}
-                        className="w-full text-left px-3 py-[6px] font-sans text-[12px] text-terra hover:bg-terra/[0.06] transition-colors"
+                        className="w-full text-left px-3 py-[6px] font-sans text-[12px] text-accent hover:bg-accent/[0.06] transition-colors"
                       >
                         + create &ldquo;{tagQuery.trim()}&rdquo;
                       </button>
@@ -599,7 +599,7 @@ function CaptureDetailPanel({
             ) : (
               <button
                 onClick={() => setTagInputOpen(true)}
-                className="font-sans text-[11px] text-charcoal/30 dark:text-[#5c5a57] hover:text-terra transition-colors px-[9px] py-[4px] rounded-full border border-dashed border-charcoal/12 dark:border-white/[0.07] hover:border-terra/30"
+                className="font-sans text-[11px] text-charcoal/30 dark:text-[#5c5a57] hover:text-accent transition-colors px-[9px] py-[4px] rounded-full border border-dashed border-charcoal/12 dark:border-white/[0.07] hover:border-accent/30"
               >
                 + add tag
               </button>
@@ -751,7 +751,7 @@ export function LibraryClient({
       active
         ? color === 'ray'
           ? 'border-ray text-ray bg-ray/10'
-          : 'border-terra text-terra bg-terra/10'
+          : 'border-accent text-accent bg-accent/10'
         : 'border-charcoal/10 dark:border-white/[0.07] text-charcoal/45 dark:text-[#5c5a57] hover:border-charcoal/18 dark:hover:border-white/[0.12] hover:text-charcoal/65 dark:hover:text-[#9e9b96]',
     ].join(' ')
 
@@ -811,7 +811,7 @@ export function LibraryClient({
                     className={[
                       'px-[9px] py-[4px] rounded-full font-sans text-[10px] font-medium transition-all border',
                       active
-                        ? 'border-terra text-terra bg-terra/10'
+                        ? 'border-accent text-accent bg-accent/10'
                         : 'border-charcoal/10 dark:border-white/[0.07] text-charcoal/40 dark:text-[#5c5a57] hover:border-charcoal/18 dark:hover:border-white/[0.12] hover:text-charcoal/60 dark:hover:text-[#9e9b96]',
                     ].join(' ')}
                   >

@@ -204,13 +204,13 @@ export default async function HomePage() {
                     className="rounded-[12px] border border-dashed border-charcoal/10 dark:border-white/[0.06] px-[18px] py-[14px] flex items-center justify-center min-h-[58px]"
                   >
                     {i === 0 ? (
-                      <Link href="/pursuits/new" className="text-[12px] text-terra hover:text-[#b83333] transition-colors">
+                      <Link href="/pursuits/new" className="text-[12px] text-accent hover:text-[#b83333] transition-colors">
                         + start your first pursuit
                       </Link>
                     ) : pursuitList.length === 0 ? (
                       <span className="text-[11px] text-charcoal/20 dark:text-[#5c5a57]">slot {i + 1}</span>
                     ) : (
-                      <Link href="/pursuits/new" className="text-[11px] text-charcoal/25 dark:text-[#5c5a57] hover:text-terra transition-colors">
+                      <Link href="/pursuits/new" className="text-[11px] text-charcoal/25 dark:text-[#5c5a57] hover:text-accent transition-colors">
                         + add pursuit
                       </Link>
                     )}

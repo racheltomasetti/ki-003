@@ -4,10 +4,15 @@
   /* Ki color palette */
   --color-cream: #f6f1e6;
   --color-charcoal: #1a1a1a;
+  /* Brand palette — terra is always the red, never remapped */
   --color-terra: #9e2a2b;
   --color-ray: #efcb68;
   --color-pacific: #58a4b0;
   --color-sage: #67934d;
+  /* User accent — primary UI (buttons, active states). Defaults to terra. */
+  --color-accent: #9e2a2b;
+  /* Text on accent-filled surfaces — charcoal when accent is light (e.g. Ray) */
+  --color-on-accent: #f6f1e6;
 
   /* Typography — injected via next/font CSS variables */
   --font-serif: var(--font-merriweather);

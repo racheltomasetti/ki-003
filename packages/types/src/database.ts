@@ -398,10 +398,53 @@ export type Database = {
           },
         ]
       }
+      daily_logs: {
+        Row: {
+          body_signals: string[] | null
+          created_at: string
+          emotions: string[] | null
+          energy_level: number | null
+          id: string
+          log_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_signals?: string[] | null
+          created_at?: string
+          emotions?: string[] | null
+          energy_level?: number | null
+          id?: string
+          log_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_signals?: string[] | null
+          created_at?: string
+          emotions?: string[] | null
+          energy_level?: number | null
+          id?: string
+          log_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrichments: {
         Row: {
           capture_id: string
           capture_intent: string | null
+          cycle_day: number | null
+          cycle_start_date: string | null
           embedding: string | null
           energy_level: string | null
           enrichment_status: string
@@ -425,6 +468,8 @@ export type Database = {
         Insert: {
           capture_id: string
           capture_intent?: string | null
+          cycle_day?: number | null
+          cycle_start_date?: string | null
           embedding?: string | null
           energy_level?: string | null
           enrichment_status?: string
@@ -448,6 +493,8 @@ export type Database = {
         Update: {
           capture_id?: string
           capture_intent?: string | null
+          cycle_day?: number | null
+          cycle_start_date?: string | null
           embedding?: string | null
           energy_level?: string | null
           enrichment_status?: string
@@ -478,11 +525,43 @@ export type Database = {
           },
         ]
       }
+      period_logs: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "period_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          average_cycle_length: number | null
+          average_period_length: number | null
           bio: string | null
           created_at: string
+          cycle_type: string | null
           display_name: string | null
           id: string
           memory_document: string | null
@@ -491,8 +570,11 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          average_cycle_length?: number | null
+          average_period_length?: number | null
           bio?: string | null
           created_at?: string
+          cycle_type?: string | null
           display_name?: string | null
           id: string
           memory_document?: string | null
@@ -501,8 +583,11 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          average_cycle_length?: number | null
+          average_period_length?: number | null
           bio?: string | null
           created_at?: string
+          cycle_type?: string | null
           display_name?: string | null
           id?: string
           memory_document?: string | null
@@ -739,6 +824,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_cycle_day: {
+        Args: { p_captured_at: string; p_user_id: string }
+        Returns: {
+          cycle_day: number
+          cycle_start_date: string
+        }[]
+      }
       match_captures: {
         Args: {
           match_count?: number
@@ -754,6 +846,10 @@ export type Database = {
           title: string
           type: string
         }[]
+      }
+      restamp_cycle_for_user: {
+        Args: { p_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {

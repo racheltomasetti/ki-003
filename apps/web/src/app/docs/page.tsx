@@ -169,7 +169,7 @@ export default function DocsPage() {
         <div className="pt-8 pb-4 flex flex-col sm:flex-row items-start gap-4">
           <Link
             href="/sign-up"
-            className="font-sans font-semibold text-sm bg-terra text-cream px-7 py-3.5 rounded-xl hover:opacity-90 transition-opacity"
+            className="font-sans font-semibold text-sm bg-accent text-on-accent px-7 py-3.5 rounded-xl hover:opacity-90 transition-opacity"
           >
             Create your account
           </Link>

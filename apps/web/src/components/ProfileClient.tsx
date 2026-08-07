@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
+import { applyAccentColor } from '@/lib/accent'
 import { createClient } from '@/lib/supabase/client'
 import { updateMemoryDocument } from '@ki/services'
 import type { Profile } from '@ki/types'
@@ -163,7 +164,7 @@ function MemoryAgentPanel({
               className={[
                 'px-3 py-2 rounded-xl font-sans text-[12px] leading-relaxed whitespace-pre-wrap',
                 m.role === 'user'
-                  ? 'bg-terra text-cream rounded-br-sm'
+                  ? 'bg-accent text-on-accent rounded-br-sm'
                   : 'bg-charcoal/[0.05] dark:bg-white/[0.05] border border-charcoal/8 dark:border-white/7 text-charcoal dark:text-[#f0ede8] rounded-bl-sm',
               ].join(' ')}
             >
@@ -196,7 +197,7 @@ function MemoryAgentPanel({
               type="button"
               disabled={sending}
               onClick={() => void send(chip)}
-              className="font-sans text-[10px] px-2 py-1 rounded-full border border-charcoal/12 dark:border-white/8 text-charcoal/45 dark:text-[#5c5a57] hover:border-terra/40 hover:text-terra transition-colors disabled:opacity-40"
+              className="font-sans text-[10px] px-2 py-1 rounded-full border border-charcoal/12 dark:border-white/8 text-charcoal/45 dark:text-[#5c5a57] hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-40"
             >
               {chip}
             </button>
@@ -222,7 +223,7 @@ function MemoryAgentPanel({
             type="button"
             disabled={sending || !input.trim()}
             onClick={() => void send(input)}
-            className="shrink-0 font-sans text-[11px] font-medium text-terra disabled:opacity-35 hover:opacity-80 transition-opacity"
+            className="shrink-0 font-sans text-[11px] font-medium text-accent disabled:opacity-35 hover:opacity-80 transition-opacity"
           >
             Send
           </button>
@@ -303,7 +304,7 @@ function ProfileTab({
 
           {/* User header */}
           <div className="flex items-center gap-[14px] mb-[26px]">
-            <div className="w-[50px] h-[50px] rounded-full bg-terra/10 border border-terra flex items-center justify-center text-[18px] font-semibold text-terra shrink-0">
+            <div className="w-[50px] h-[50px] rounded-full bg-accent/10 border border-accent flex items-center justify-center text-[18px] font-semibold text-accent shrink-0">
               {avatarLetter}
             </div>
             <div>
@@ -329,8 +330,8 @@ function ProfileTab({
                 className={[
                   'font-sans text-[11px] font-medium transition-colors',
                   panelOpen
-                    ? 'text-terra'
-                    : 'text-charcoal/45 dark:text-[#9e9b96] hover:text-terra',
+                    ? 'text-accent'
+                    : 'text-charcoal/45 dark:text-[#9e9b96] hover:text-accent',
                 ].join(' ')}
               >
                 {panelOpen ? 'Hide Ki' : 'Build with Ki'}
@@ -355,7 +356,7 @@ function ProfileTab({
               <button
                 onClick={() => void handleSave()}
                 disabled={saving || !dirty}
-                className="font-sans text-[11px] font-medium text-terra hover:opacity-80 transition-opacity disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                className="font-sans text-[11px] font-medium text-accent hover:opacity-80 transition-opacity disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
@@ -453,7 +454,7 @@ function ReEnrichCard() {
             'shrink-0 px-4 py-[7px] rounded-[10px] font-sans text-[11.5px] font-medium transition-all',
             running
               ? 'bg-charcoal/10 dark:bg-white/[0.08] text-charcoal/40 dark:text-[#9e9b96] cursor-default'
-              : 'bg-terra text-white hover:opacity-90 cursor-pointer shadow-sm',
+              : 'bg-accent text-on-accent hover:opacity-90 cursor-pointer shadow-sm',
           ].join(' ')}
         >
           {running
@@ -520,7 +521,7 @@ function SettingsTab({
                     className={[
                       'px-3 py-[5px] rounded-[8px] font-sans text-[11px] font-medium cursor-pointer transition-all',
                       theme === key
-                        ? 'bg-terra text-white shadow-sm'
+                        ? 'bg-accent text-on-accent shadow-sm'
                         : 'text-charcoal/50 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8]',
                     ].join(' ')}
                   >
@@ -537,7 +538,7 @@ function SettingsTab({
           <div className="mb-4">
             <div className="font-sans text-[13px] font-medium text-charcoal dark:text-[#f0ede8] mb-[3px]">Accent color</div>
             <div className="font-sans text-[11px] text-charcoal/40 dark:text-[#5c5a57]">
-              Sets the primary color across the entire interface — active states, buttons, highlights
+              Sets the accent for buttons, active states, and highlights. Brand colors like terra stay fixed.
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -629,7 +630,7 @@ export function ProfileClient({ profile, userEmail, displayName }: ProfileClient
 
   const handleAccentChange = (color: string) => {
     setAccentColor(color)
-    document.documentElement.style.setProperty('--color-terra', color)
+    applyAccentColor(color)
     localStorage.setItem('ki-accent-color', color)
   }
 
@@ -659,7 +660,7 @@ export function ProfileClient({ profile, userEmail, displayName }: ProfileClient
               className={[
                 'w-full text-left flex items-center px-5 py-[7px] font-sans text-[12.5px] border-l-2 transition-all duration-150',
                 tab === key
-                  ? 'text-charcoal dark:text-[#f0ede8] bg-terra/10 border-terra font-medium'
+                  ? 'text-charcoal dark:text-[#f0ede8] bg-accent/10 border-accent font-medium'
                   : 'text-charcoal/50 dark:text-[#9e9b96] border-transparent hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
               ].join(' ')}
             >
@@ -671,7 +672,7 @@ export function ProfileClient({ profile, userEmail, displayName }: ProfileClient
         <div className="h-[64px] box-border px-[14px] border-t border-charcoal/8 dark:border-white/[0.07] shrink-0 flex items-center">
           <button
             onClick={handleSignOut}
-            className="w-full text-left px-1.5 py-[6px] font-sans text-[11px] text-charcoal/35 dark:text-[#5c5a57] hover:text-terra transition-colors rounded-[10px] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]"
+            className="w-full text-left px-1.5 py-[6px] font-sans text-[11px] text-charcoal/35 dark:text-[#5c5a57] hover:text-accent transition-colors rounded-[10px] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]"
           >
             Sign out
           </button>

@@ -128,7 +128,7 @@ function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
                   className={[
                     'px-4 py-[7px] rounded-[10px] border font-sans text-[12px] font-medium transition-all',
                     selected
-                      ? 'bg-terra border-terra text-cream'
+                      ? 'bg-accent border-accent text-on-accent'
                       : 'border-charcoal/12 dark:border-white/[0.08] text-charcoal/55 dark:text-[#9e9b96] hover:border-charcoal/20 dark:hover:border-white/[0.13] hover:text-charcoal dark:hover:text-[#f0ede8]',
                   ].join(' ')}
                 >
@@ -147,7 +147,7 @@ function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
           className={[
             'px-5 py-[9px] rounded-[10px] font-sans text-[13px] font-semibold transition-all',
             dirty && draft.name.trim() && !saving
-              ? 'bg-terra text-cream hover:bg-terra/90'
+              ? 'bg-accent text-on-accent hover:bg-accent/90'
               : 'bg-charcoal/8 dark:bg-white/5 text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
           ].join(' ')}
         >
@@ -353,7 +353,7 @@ function ManagementTab({ pursuit }: { pursuit: Pursuit }) {
                 className={[
                   'px-4 py-[7px] rounded-[10px] font-sans text-[12px] font-semibold transition-all',
                   deleteInput === pursuit.name && !deleting
-                    ? 'bg-terra text-cream hover:bg-terra/90'
+                    ? 'bg-accent text-on-accent hover:bg-accent/90'
                     : 'bg-charcoal/8 dark:bg-white/5 text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
                 ].join(' ')}
               >
@@ -417,7 +417,7 @@ export function PursuitSettingsClient({ pursuit }: { pursuit: Pursuit }) {
               className={[
                 'w-full text-left flex items-center px-5 py-[7px] text-[12.5px] border-l-2 transition-all duration-150',
                 tab === key
-                  ? 'text-charcoal dark:text-[#f0ede8] bg-terra/10 border-terra font-medium'
+                  ? 'text-charcoal dark:text-[#f0ede8] bg-accent/10 border-accent font-medium'
                   : 'text-charcoal/50 dark:text-[#9e9b96] border-transparent hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
               ].join(' ')}
             >
