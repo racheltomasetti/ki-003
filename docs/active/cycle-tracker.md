@@ -98,7 +98,7 @@ Port terra-001's `phaseUtils.ts` + `cycleUtils.ts` — pure functions, zero app 
 **Phase B — input.**
 - **Onboarding is a new `/onboarding` route — ki-003's first true first-run flow.** Today, sign-up drops straight into the app with no sequence at all. This is the natural home for "connect to your cycle" (last period start, avg cycle length, avg period length / skip), and — since it's being built anyway — the place to finally give new users a first pursuit + core question prompt and a first capture, rather than an empty Home. Full flow design happens when Phase B starts, not before.
 - Period logging: start / ended, with backdating. (terra-001's onboarding + logging flows are the reference; its period-ended edge cases are already solved there.)
-- Daily log widget on Home: energy, emotions, body signals — 30 seconds, once a day.
+- Daily log widget on Home: energy, emotions, body signals — 30 seconds, once a day. **Under exploration:** a voice check-in instead of a manual multi-select — see Open Questions below.
 - Sidebar indicator: cycle day + derived phase.
 
 **Phase C — the correlation. This is the feature.**
@@ -136,6 +136,10 @@ Port terra-001's `phaseUtils.ts` + `cycleUtils.ts` — pure functions, zero app 
 
 ## Open Questions
 
-- Do daily_logs also flow through the enrichment pipeline as captures? Current answer: no — they are structured data, not thoughts. A user who wants to say more voice-captures it, and that capture stamps with the same cycle day. Revisit if the boundary feels wrong in use.
+- Do daily_logs also flow through the enrichment pipeline as captures? Original answer: no — they are structured data, not thoughts. A user who wants to say more voice-captures it, and that capture stamps with the same cycle day.
+
+  **Under active exploration (Aug 2026), not yet decided.** Testing `chat-with-ki`'s cycle context surfaced a stronger version of the check-in: a *voice* capture, not a manual multi-select — "give yourself the space to process the emotion before making the decision and acting, respond not react" (the same principle the whole product is built on) applied to the daily check-in itself. The shape being explored: the check-in is a capture like any other, but enriched through a **third enrichment profile** (alongside `personal` / `artifact`) whose extraction target is the `daily_logs` shape — `energy_level` / `emotions` / `body_signals` — pulled from the transcript by Haiku, instead of summary / themes / mood_tags.
+
+  Open within this: does the check-in capture's enrichment *also* upsert `daily_logs` (capture is primary, `daily_logs` becomes a derived/synced view), or does something else populate `daily_logs` directly and the capture is just the raw voice record? Needs resolving before Phase B input work starts — this boundary was deliberately "no" when the spec was written specifically because daily_logs are structured, not thoughts; the case for revisiting is that voice removes the friction of manual entry without losing structure, since extraction still produces the same typed fields.
 - Lunar anchor, once that phase starts: new moon = day 1 is the natural default. Worth allowing a custom anchor (e.g., full moon start)? Defer until someone asks.
 - When mobile revives, period logging + daily log must be there day one — the body doesn't wait for a laptop.

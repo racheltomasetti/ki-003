@@ -840,6 +840,8 @@ export type Database = {
         Returns: {
           body: string
           captured_at: string
+          cycle_day: number
+          cycle_start_date: string
           id: string
           is_starred: boolean
           similarity: number
@@ -848,6 +850,10 @@ export type Database = {
         }[]
       }
       restamp_cycle_for_user: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      update_cycle_averages_for_user: {
         Args: { p_user_id: string }
         Returns: undefined
       }
