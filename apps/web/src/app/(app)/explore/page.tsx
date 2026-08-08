@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { getCaptures, getCycleProfile } from '@ki/services'
+import { getCaptures, getCycleProfile, getActivePursuits } from '@ki/services'
 import { resolveCyclePhase, MENSTRUAL_LABELS, type CyclePhase } from '@ki/utils'
-import type { CaptureWithEnrichment } from '@ki/types'
+import { PursuitConnections } from '@/components/PursuitConnections'
+import type { CaptureWithEnrichment, Pursuit } from '@ki/types'
 import { MdKeyboardVoice, MdOutlineSearch } from 'react-icons/md'
 import { FaPencil } from 'react-icons/fa6'
 import { IoAttach } from 'react-icons/io5'
@@ -158,21 +159,31 @@ function CycleCell({
 function CaptureModal({
   capture,
   onClose,
+  onPrev,
+  onNext,
   averageCycleLength,
   averagePeriodLength,
+  pursuits,
 }: {
   capture: CaptureRow
   onClose: () => void
+  onPrev: () => void
+  onNext: () => void
   averageCycleLength: number | null | undefined
   averagePeriodLength: number | null | undefined
+  pursuits: Pursuit[]
 }) {
   const e = capture.enrichments
 
   useEffect(() => {
-    const handler = (ev: KeyboardEvent) => { if (ev.key === 'Escape') onClose() }
+    const handler = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') onClose()
+      if (ev.key === 'ArrowLeft') onPrev()
+      if (ev.key === 'ArrowRight') onNext()
+    }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [onClose])
+  }, [onClose, onPrev, onNext])
 
   return (
     <div
@@ -218,6 +229,12 @@ function CaptureModal({
                 <div className="px-4 py-3 border-b border-charcoal/8 dark:border-white/[0.07]">
                   <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-[6px]">Summary</div>
                   <p className="font-serif text-[12px] font-light italic text-charcoal/55 dark:text-[#9e9b96] leading-relaxed">{e.summary}</p>
+                </div>
+              )}
+
+              {e.pursuit_connections && e.pursuit_connections.length > 0 && (
+                <div className="px-4 py-3 border-b border-charcoal/8 dark:border-white/[0.07]">
+                  <PursuitConnections connections={e.pursuit_connections} pursuits={pursuits} />
                 </div>
               )}
 
@@ -319,6 +336,17 @@ export default function ExplorePage() {
     },
   })
 
+  // For resolving pursuit_connections' pursuit_id to a name/color in the modal
+  const { data: pursuits = [] } = useQuery({
+    queryKey: ['explore-pursuits'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return []
+      const { data } = await getActivePursuits(supabase, user.id)
+      return (data ?? []) as Pursuit[]
+    },
+  })
+
   // ── Table state ────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState<SortCol>('captured_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -391,6 +419,18 @@ export default function ExplorePage() {
 
     return [...rows].sort((a, b) => compareRows(a, b, sortCol, sortDir))
   }, [captures, highlightedIds, search, sourceFilter, sentimentFilter, energyFilter, phaseFilter, cycleProfile, starredOnly, sortCol, sortDir])
+
+  // Left/Right in the capture modal step through this same table order.
+  const handlePrevCapture = () => {
+    if (!selectedCapture) return
+    const i = displayCaptures.findIndex(c => c.id === selectedCapture.id)
+    if (i > 0) setSelectedCapture(displayCaptures[i - 1])
+  }
+  const handleNextCapture = () => {
+    if (!selectedCapture) return
+    const i = displayCaptures.findIndex(c => c.id === selectedCapture.id)
+    if (i >= 0 && i < displayCaptures.length - 1) setSelectedCapture(displayCaptures[i + 1])
+  }
 
   // ── Chat send ──────────────────────────────────────────────────────────────
   const send = async (text: string) => {
@@ -825,8 +865,11 @@ export default function ExplorePage() {
         <CaptureModal
           capture={selectedCapture}
           onClose={() => setSelectedCapture(null)}
+          onPrev={handlePrevCapture}
+          onNext={handleNextCapture}
           averageCycleLength={cycleProfile?.average_cycle_length}
           averagePeriodLength={cycleProfile?.average_period_length}
+          pursuits={pursuits}
         />
       )}
     </div>

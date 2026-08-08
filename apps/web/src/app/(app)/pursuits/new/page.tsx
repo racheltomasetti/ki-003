@@ -156,6 +156,15 @@ export default function NewPursuitPage() {
         status: 'active',
       })
 
+      // Fire-and-forget: generates core_question_embedding (self-healing if
+      // missing) and sweeps the existing corpus for resonance. Runs async on
+      // the server; don't block navigation waiting on it.
+      if (pursuit.core_question) {
+        void supabase.functions.invoke('match-corpus-to-pursuit', {
+          body: { pursuit_id: pursuit.id },
+        })
+      }
+
       router.push(`/pursuits/${pursuit.id}`)
     } catch (err) {
       const message =

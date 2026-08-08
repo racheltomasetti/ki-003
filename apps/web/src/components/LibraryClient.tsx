@@ -18,6 +18,7 @@ import {
 import { MdKeyboardVoice, MdOutlineSearch } from 'react-icons/md'
 import { FaPencil } from 'react-icons/fa6'
 import { IoAttach } from 'react-icons/io5'
+import { PursuitConnections } from '@/components/PursuitConnections'
 import type { Pursuit, Tag, CaptureWithEnrichment } from '@ki/types'
 
 // ─── Local type ───────────────────────────────────────────────────────────────
@@ -89,6 +90,7 @@ function CaptureListItem({
 
   return (
     <button
+      id={`capture-row-${capture.id}`}
       onClick={onSelect}
       className={[
         'w-full text-left px-4 py-[12px] border-b border-charcoal/[0.06] dark:border-white/[0.05] transition-colors last:border-b-0',
@@ -398,6 +400,13 @@ function CaptureDetailPanel({
                 <p className="font-serif text-[13px] font-light italic text-charcoal/60 dark:text-[#9e9b96] leading-relaxed">
                   {enrichment.summary}
                 </p>
+              </div>
+            )}
+
+            {/* Resonates with */}
+            {enrichment.pursuit_connections && enrichment.pursuit_connections.length > 0 && (
+              <div className="px-5 py-4 border-b border-charcoal/8 dark:border-white/[0.07]">
+                <PursuitConnections connections={enrichment.pursuit_connections} pursuits={pursuits} />
               </div>
             )}
 
@@ -712,6 +721,32 @@ export function LibraryClient({
       setSelectedId(null)
     }
   }, [filtered.length, selectedId])
+
+  // Up/Down arrows move the selection through the visible (filtered) list.
+  // Ignored while typing anywhere (search, title edit, tag input, etc.).
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+      const active = document.activeElement
+      const isTyping = active instanceof HTMLElement &&
+        (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)
+      if (isTyping || filtered.length === 0) return
+
+      e.preventDefault()
+      const currentIndex = filtered.findIndex(c => c.id === selectedId)
+      const nextIndex = e.key === 'ArrowDown'
+        ? Math.min(currentIndex + 1, filtered.length - 1)
+        : currentIndex === -1 ? 0 : Math.max(currentIndex - 1, 0)
+
+      const next = filtered[nextIndex]
+      if (next) {
+        setSelectedId(next.id)
+        document.getElementById(`capture-row-${next.id}`)?.scrollIntoView({ block: 'nearest' })
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [filtered, selectedId])
 
   const handleStar = async (capture: CaptureRow) => {
     const current = localStarred.has(capture.id) ? localStarred.get(capture.id)! : capture.is_starred

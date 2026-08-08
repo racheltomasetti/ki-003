@@ -1,8 +1,12 @@
 // Ki — match-corpus-to-pursuit Edge Function
 //
 // Retroactive pursuit resonance pass. Called when a pursuit is promoted
-// from curiosity → active (or created directly as active) and has a
-// core_question_embedding.
+// from curiosity → active (or created directly as active).
+//
+// Self-healing: if the pursuit has no core_question_embedding yet, this
+// generates one from core_question and writes it before matching — so
+// calling this function is also how a pursuit's embedding gets backfilled,
+// not just how the corpus gets swept.
 //
 // Reads every capture in the user's corpus that has an embedding,
 // computes cosine similarity against the pursuit's core_question_embedding,
@@ -21,11 +25,44 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001'
+const EMBEDDING_MODEL = 'text-embedding-3-small'
 const RESONANCE_THRESHOLD = 0.40
+
+// ─── Embedding ────────────────────────────────────────────────────────────────
+
+async function generateEmbedding(text: string): Promise<number[]> {
+  const res = await fetch('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+    },
+    body: JSON.stringify({ model: EMBEDDING_MODEL, input: text }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`OpenAI embedding error ${res.status}: ${text}`)
+  }
+  const data = await res.json()
+  return data.data[0].embedding as number[]
+}
 
 // ─── Cosine similarity ────────────────────────────────────────────────────────
 
-function cosineSimilarity(a: number[], b: number[]): number {
+// pgvector columns come back as their textual form through PostgREST
+// ("[0.1,0.2,...]" as a string), not a parsed array — always normalize both
+// inputs here rather than trust callers to. Getting this wrong doesn't
+// throw: string arithmetic silently produces NaN, and `NaN < threshold` is
+// always false, so a broken comparison looks like "everything matches."
+function parseEmbedding(value: unknown): number[] {
+  if (Array.isArray(value)) return value as number[]
+  if (typeof value === 'string') return JSON.parse(value) as number[]
+  throw new Error('Unexpected embedding format — expected array or JSON string')
+}
+
+function cosineSimilarity(aRaw: unknown, bRaw: unknown): number {
+  const a = parseEmbedding(aRaw)
+  const b = parseEmbedding(bRaw)
   let dot = 0, normA = 0, normB = 0
   for (let i = 0; i < a.length; i++) {
     dot   += a[i] * b[i]
@@ -94,10 +131,10 @@ Deno.serve(async (req) => {
       return new Response('pursuit_id required', { status: 400 })
     }
 
-    // Fetch the pursuit — must be active and have a core_question_embedding
+    // Fetch the pursuit — must be active and have a core_question
     const { data: pursuit, error: pursuitErr } = await supabase
       .from('pursuits')
-      .select('id, user_id, name, core_question, core_question_embedding, status')
+      .select('id, user_id, name, core_question, status')
       .eq('id', pursuitId)
       .single()
 
@@ -109,11 +146,20 @@ Deno.serve(async (req) => {
       return new Response('pursuit is not active', { status: 400 })
     }
 
-    if (!pursuit.core_question_embedding) {
-      return new Response('pursuit has no core_question_embedding', { status: 400 })
+    if (!pursuit.core_question) {
+      return new Response('pursuit has no core_question to embed', { status: 400 })
     }
 
-    const pursuitEmbedding = pursuit.core_question_embedding as number[]
+    // Always regenerate from the current core_question — cheap, and the only
+    // way to guarantee the embedding can never silently go stale after an
+    // edit (PursuitSettingsClient lets core_question change after creation).
+    const pursuitEmbedding = await generateEmbedding(pursuit.core_question)
+    const { error: embedErr } = await supabase
+      .from('pursuits')
+      .update({ core_question_embedding: pursuitEmbedding })
+      .eq('id', pursuitId)
+    if (embedErr) throw embedErr
+
     const matchedAt = new Date().toISOString()
 
     // Fetch all captures for this user that have an embedding

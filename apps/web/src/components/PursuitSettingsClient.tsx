@@ -56,13 +56,25 @@ function DetailsTab({ pursuit }: { pursuit: Pursuit }) {
     setSaving(true)
     setSaveError(null)
     try {
+      const newCoreQuestion = draft.core_question.trim()
+      const coreQuestionChanged = newCoreQuestion !== initialRef.current.core_question
+
       await updatePursuit(supabase, pursuit.id, {
         name: draft.name.trim(),
         description: draft.description.trim() || null,
-        core_question: draft.core_question.trim() || null,
+        core_question: newCoreQuestion || null,
         pursuit_mode: draft.pursuit_mode || null,
       })
-      initialRef.current = { ...draft, name: draft.name.trim(), description: draft.description.trim(), core_question: draft.core_question.trim() }
+
+      // Core question changed — the resonance embedding is now stale.
+      // Fire-and-forget: regenerates it and re-sweeps the corpus.
+      if (coreQuestionChanged && newCoreQuestion) {
+        void supabase.functions.invoke('match-corpus-to-pursuit', {
+          body: { pursuit_id: pursuit.id },
+        })
+      }
+
+      initialRef.current = { ...draft, name: draft.name.trim(), description: draft.description.trim(), core_question: newCoreQuestion }
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {

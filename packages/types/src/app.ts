@@ -110,6 +110,7 @@ export interface Enrichment {
   model_used: string | null
   cycle_day: number | null          // derived, stamped by Postgres — never by the app or Claude
   cycle_start_date: string | null   // which cycle instance this capture belongs to
+  pursuit_connections: PursuitConnection[] | null
   updated_at: string
 }
 

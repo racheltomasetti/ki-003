@@ -192,7 +192,20 @@ async function generateEmbedding(text: string): Promise<number[]> {
 
 // ─── Cosine similarity ────────────────────────────────────────────────────────
 
-function cosineSimilarity(a: number[], b: number[]): number {
+// pgvector columns come back as their textual form through PostgREST
+// ("[0.1,0.2,...]" as a string), not a parsed array — always normalize both
+// inputs here rather than trust callers to. Getting this wrong doesn't
+// throw: string arithmetic silently produces NaN, and `NaN < threshold` is
+// always false, so a broken comparison looks like "everything matches."
+function parseEmbedding(value: unknown): number[] {
+  if (Array.isArray(value)) return value as number[]
+  if (typeof value === 'string') return JSON.parse(value) as number[]
+  throw new Error('Unexpected embedding format — expected array or JSON string')
+}
+
+function cosineSimilarity(aRaw: unknown, bRaw: unknown): number {
+  const a = parseEmbedding(aRaw)
+  const b = parseEmbedding(bRaw)
   let dot = 0, normA = 0, normB = 0
   for (let i = 0; i < a.length; i++) {
     dot   += a[i] * b[i]
