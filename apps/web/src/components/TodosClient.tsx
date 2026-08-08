@@ -192,25 +192,17 @@ export function TodosClient({ userId, initialTodos, pursuits }: TodosClientProps
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="shrink-0 border-b border-charcoal/8 px-8 py-6 dark:border-white/[0.07]">
-        <div className="mx-auto flex max-w-[1180px] items-end justify-between gap-6">
-          <div>
-            <p className="mb-1 font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">
-              Thinking into action
-            </p>
-            <h1 className="font-serif text-[28px] font-light text-charcoal dark:text-[#f0ede8]">
-              Todos
-            </h1>
-            <p className="mt-1 font-serif text-[13px] font-light text-charcoal/45 dark:text-[#77736f]">
-              The next actions that move what you are carrying forward.
-            </p>
-          </div>
+      <header className="box-border flex h-[4.25rem] shrink-0 items-center border-b border-charcoal/10 px-8 dark:border-white/[0.07]">
+        <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-6">
+          <p className="font-sans text-[clamp(0.625rem,0.5rem+0.35vw,0.8125rem)] font-semibold uppercase tracking-[0.16em] text-accent">
+            Thinking into action
+          </p>
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            className="rounded-full bg-accent px-4 py-2.5 font-sans text-[12px] font-medium text-on-accent transition-opacity hover:opacity-90"
+            className="rounded-full bg-accent px-4 py-2.5 font-sans text-[clamp(0.6875rem,0.6rem+0.25vw,0.8125rem)] font-medium text-on-accent transition-opacity hover:opacity-90"
           >
-            + New todo
+            + new todo
           </button>
         </div>
       </header>
