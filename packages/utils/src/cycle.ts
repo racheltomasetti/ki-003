@@ -23,7 +23,8 @@ export interface PhaseInfo {
 const DEFAULT_CYCLE_LENGTH = 28
 const DEFAULT_PERIOD_LENGTH = 5
 
-const MENSTRUAL_LABELS: Record<CyclePhase, string> = {
+/** Display label per phase. Exported so filter UIs can list all phases without duplicating this map. */
+export const MENSTRUAL_LABELS: Record<CyclePhase, string> = {
   rest: 'Menstruation',
   build: 'Follicular',
   peak: 'Ovulation',
@@ -60,4 +61,38 @@ export function resolveCyclePhase(
   const periodLength = options?.averagePeriodLength ?? DEFAULT_PERIOD_LENGTH
   const phase = resolveMenstrualPhase(cycleDay, length, periodLength)
   return { phase, label: MENSTRUAL_LABELS[phase], day: cycleDay, length }
+}
+
+// ─── Clustering ─────────────────────────────────────────────────────────────
+// Groups individual logged days (period_logs rows) into period instances —
+// the same "contiguous days = one cycle start" logic compute_cycle_day uses
+// in Postgres, mirrored here so the UI can display and edit whole periods
+// rather than individual date rows. Ported from terra-001's clusterDates.
+
+export interface PeriodInstance {
+  startDate: string
+  endDate: string
+  dayCount: number
+}
+
+function daysBetween(a: string, b: string): number {
+  const start = new Date(a + 'T00:00:00')
+  const end = new Date(b + 'T00:00:00')
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000)
+}
+
+/** Groups sorted (ascending) YYYY-MM-DD dates into contiguous-day instances. */
+export function clusterPeriodDates(sortedDates: string[]): PeriodInstance[] {
+  if (sortedDates.length === 0) return []
+  const clusters: string[][] = [[sortedDates[0]]]
+  for (let i = 1; i < sortedDates.length; i++) {
+    const cluster = clusters[clusters.length - 1]
+    const last = cluster[cluster.length - 1]
+    if (daysBetween(last, sortedDates[i]) === 1) {
+      cluster.push(sortedDates[i])
+    } else {
+      clusters.push([sortedDates[i]])
+    }
+  }
+  return clusters.map(c => ({ startDate: c[0], endDate: c[c.length - 1], dayCount: c.length }))
 }

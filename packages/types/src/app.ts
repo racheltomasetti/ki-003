@@ -364,5 +364,15 @@ export interface CanvasAgentResponse {
 }
 
 export type ProfileUpdate = Partial<
-  Pick<Profile, 'display_name' | 'avatar_url' | 'bio' | 'memory_document' | 'memory_updated_at'>
+  Pick<
+    Profile,
+    | 'display_name'
+    | 'avatar_url'
+    | 'bio'
+    | 'memory_document'
+    | 'memory_updated_at'
+    | 'cycle_type'
+    | 'average_cycle_length'
+    | 'average_period_length'
+  >
 >

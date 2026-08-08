@@ -1,5 +1,6 @@
 export * from './canvas'
 export * from './captures'
+export * from './cycle'
 export * from './enrichments'
 export * from './profiles'
 export * from './pursuit_artifacts'

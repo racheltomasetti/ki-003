@@ -5,12 +5,41 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
+import { useQuery } from '@tanstack/react-query'
 import { LuLibrary } from 'react-icons/lu'
 import { HiMiniHome } from 'react-icons/hi2'
 import { IoCompassOutline } from 'react-icons/io5'
 import { MdChecklist, MdLightMode } from 'react-icons/md'
 import { IoMoon } from "react-icons/io5";
+import { getCurrentCycleInfo } from '@ki/services'
+import { createClient } from '@/lib/supabase/client'
 import type { Pursuit, PursuitMode, Profile } from '@ki/types'
+
+// ─── Cycle day badge ────────────────────────────────────────────────────────
+// Footer only, next to the avatar — just "Day N", no phase. Nothing if not
+// tracking, nothing if tracking but no period logged yet.
+
+function CycleDayBadge({ profile }: { profile: Profile }) {
+  const supabase = createClient()
+  const { data } = useQuery({
+    queryKey: ['cycle-info', profile.id],
+    queryFn: () => getCurrentCycleInfo(supabase, profile.id),
+    enabled: profile.cycle_type === 'menstrual',
+    staleTime: 5 * 60_000,
+  })
+
+  if (!data?.cycleDay) return null
+
+  return (
+    <Link
+      href="/profile"
+      title={`Day ${data.cycleDay} of your cycle`}
+      className="shrink-0 whitespace-nowrap inline-flex items-center justify-center h-[1.5rem] rounded-full border border-accent/25 bg-accent/10 px-2.5 font-sans text-[0.625rem] font-medium text-accent hover:bg-accent/15 transition-colors"
+    >
+      Day {data.cycleDay}
+    </Link>
+  )
+}
 
 interface SidebarProps {
   pursuits: Pursuit[]
@@ -99,6 +128,14 @@ export function Sidebar({
             className="hidden dark:block h-full w-full object-contain"
           />
         </button>
+
+        {!collapsed && (
+          <div className="flex-1 min-w-0 flex justify-start ml-3">
+            <span className="font-serif text-[0.975rem] font-light text-charcoal dark:text-[#f0ede8] truncate">
+              Ki
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Nav */}
@@ -250,15 +287,19 @@ export function Sidebar({
           <div className="w-full flex items-center gap-2 px-1.5 py-[0.375rem] rounded-[0.625rem] hover:bg-charcoal/5 dark:hover:bg-[#1d1b1a] transition-colors">
             <button
               onClick={() => router.push('/profile')}
-              className="min-w-0 flex-1 flex items-center gap-[0.625rem] text-left cursor-pointer"
+              title={displayName}
+              className="shrink-0 cursor-pointer"
             >
               <div className="w-7 h-7 rounded-full bg-accent/10 border border-accent flex items-center justify-center text-[0.6875rem] font-semibold text-accent shrink-0">
                 {avatarLetter}
               </div>
-              <span className="text-[0.75rem] font-medium text-charcoal dark:text-[#f0ede8] truncate">
-                {displayName}
-              </span>
             </button>
+
+            {profile && (
+              <div className="flex-1 min-w-0 flex justify-center">
+                <CycleDayBadge profile={profile} />
+              </div>
+            )}
 
             <button
               type="button"
@@ -267,7 +308,7 @@ export function Sidebar({
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
               aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               className={[
-                'relative shrink-0 w-[2.875rem] h-[1.5rem] rounded-full cursor-pointer transition-colors',
+                'relative ml-auto shrink-0 w-[2.875rem] h-[1.5rem] rounded-full cursor-pointer transition-colors',
                 'border border-charcoal/10 dark:border-white/[0.1]',
                 'bg-charcoal/[0.06] dark:bg-white/[0.08]',
               ].join(' ')}

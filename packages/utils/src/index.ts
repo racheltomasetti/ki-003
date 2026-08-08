@@ -2,6 +2,16 @@ import type { TimeOfDayCat } from '@ki/types'
 
 export * from './cycle'
 
+// Local-timezone YYYY-MM-DD — use for period_logs / daily_logs dates instead
+// of toISOString().slice(0, 10), which is UTC and can land on the wrong
+// calendar day near midnight in the user's own timezone.
+export function getLocalYYYYMMDD(date: Date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Derive time_of_day_cat from a timestamp.
 // Used in the enrich-capture Edge Function — never from Claude.
 export function getTimeOfDayCat(date: Date): TimeOfDayCat {

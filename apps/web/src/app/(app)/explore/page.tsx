@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { getCaptures } from '@ki/services'
+import { getCaptures, getCycleProfile } from '@ki/services'
+import { resolveCyclePhase, MENSTRUAL_LABELS, type CyclePhase } from '@ki/utils'
 import type { CaptureWithEnrichment } from '@ki/types'
 import { MdKeyboardVoice, MdOutlineSearch } from 'react-icons/md'
 import { FaPencil } from 'react-icons/fa6'
@@ -15,7 +16,7 @@ type CaptureRow = Omit<CaptureWithEnrichment, 'capture_pursuits'> & {
   capture_pursuits: { pursuit_id: string }[]
 }
 
-type SortCol = 'captured_at' | 'source_type' | 'is_starred' | 'sentiment' | 'energy_level' | 'capture_intent'
+type SortCol = 'captured_at' | 'source_type' | 'is_starred' | 'sentiment' | 'energy_level' | 'capture_intent' | 'cycle_day'
 type SortDir = 'asc' | 'desc'
 
 interface Citation {
@@ -64,6 +65,13 @@ const ENERGY_STYLES: Record<string, string> = {
   low: 'bg-charcoal/[0.04] dark:bg-white/[0.04] text-charcoal/35 dark:text-[#5c5a57] border-charcoal/8 dark:border-white/[0.06]',
 }
 
+const PHASE_STYLES: Record<CyclePhase, string> = {
+  rest: 'bg-terra/8 text-terra border-terra/15',
+  build: 'bg-sage/10 text-sage border-sage/20',
+  peak: 'bg-ray/10 text-[#b8923a] border-ray/20',
+  release: 'bg-pacific/10 text-pacific border-pacific/20',
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
@@ -95,6 +103,9 @@ function compareRows(a: CaptureRow, b: CaptureRow, col: SortCol, dir: SortDir): 
     case 'capture_intent':
       result = (a.enrichments?.capture_intent ?? '').localeCompare(b.enrichments?.capture_intent ?? '')
       break
+    case 'cycle_day':
+      result = (a.enrichments?.cycle_day ?? -1) - (b.enrichments?.cycle_day ?? -1)
+      break
   }
   return dir === 'asc' ? result : -result
 }
@@ -119,14 +130,41 @@ function EnergyBadge({ value }: { value: string | null | undefined }) {
   )
 }
 
+/** Cycle day + derived phase — phase is never stored, computed here from the
+ * user's average cycle/period length, same as the sidebar and Settings. */
+function CycleCell({
+  cycleDay,
+  averageCycleLength,
+  averagePeriodLength,
+}: {
+  cycleDay: number | null | undefined
+  averageCycleLength: number | null | undefined
+  averagePeriodLength: number | null | undefined
+}) {
+  if (!cycleDay) return null
+  const phaseInfo = resolveCyclePhase(cycleDay, { averageCycleLength, averagePeriodLength })
+  return (
+    <div className="flex items-center gap-[6px] whitespace-nowrap">
+      <span className="font-sans text-[10px] text-charcoal/40 dark:text-[#9e9b96]">Day {cycleDay}</span>
+      <span className={`inline-block font-sans text-[9px] px-[6px] py-[2px] rounded-full border whitespace-nowrap ${PHASE_STYLES[phaseInfo.phase]}`}>
+        {phaseInfo.label}
+      </span>
+    </div>
+  )
+}
+
 // ─── Capture detail modal ─────────────────────────────────────────────────────
 
 function CaptureModal({
   capture,
   onClose,
+  averageCycleLength,
+  averagePeriodLength,
 }: {
   capture: CaptureRow
   onClose: () => void
+  averageCycleLength: number | null | undefined
+  averagePeriodLength: number | null | undefined
 }) {
   const e = capture.enrichments
 
@@ -209,6 +247,16 @@ function CaptureModal({
                       <span className="font-sans text-[10px] text-charcoal/45 dark:text-[#9e9b96] capitalize">{e.time_of_day_cat}</span>
                     </div>
                   )}
+                  {e.cycle_day && (
+                    <div>
+                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-[5px]">Cycle</div>
+                      <CycleCell
+                        cycleDay={e.cycle_day}
+                        averageCycleLength={averageCycleLength}
+                        averagePeriodLength={averagePeriodLength}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -260,6 +308,17 @@ export default function ExplorePage() {
     },
   })
 
+  // Cycle averages for phase derivation — same source the sidebar and
+  // Settings use, so a capture's phase here always matches everywhere else.
+  const { data: cycleProfile } = useQuery({
+    queryKey: ['explore-cycle-profile'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return null
+      return getCycleProfile(supabase, user.id)
+    },
+  })
+
   // ── Table state ────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState<SortCol>('captured_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -267,6 +326,7 @@ export default function ExplorePage() {
   const [sourceFilter, setSourceFilter] = useState<string | null>(null)
   const [sentimentFilter, setSentimentFilter] = useState<string | null>(null)
   const [energyFilter, setEnergyFilter] = useState<string | null>(null)
+  const [phaseFilter, setPhaseFilter] = useState<CyclePhase | null>(null)
   const [starredOnly, setStarredOnly] = useState(false)
   const [selectedCapture, setSelectedCapture] = useState<CaptureRow | null>(null)
   const [highlightedIds, setHighlightedIds] = useState<Set<string> | null>(null)
@@ -316,11 +376,21 @@ export default function ExplorePage() {
       if (sourceFilter) rows = rows.filter(c => c.source_type === sourceFilter)
       if (sentimentFilter) rows = rows.filter(c => c.enrichments?.sentiment === sentimentFilter)
       if (energyFilter) rows = rows.filter(c => c.enrichments?.energy_level === energyFilter)
+      if (phaseFilter) {
+        rows = rows.filter(c => {
+          const day = c.enrichments?.cycle_day
+          if (!day) return false
+          return resolveCyclePhase(day, {
+            averageCycleLength: cycleProfile?.average_cycle_length,
+            averagePeriodLength: cycleProfile?.average_period_length,
+          }).phase === phaseFilter
+        })
+      }
       if (starredOnly) rows = rows.filter(c => c.is_starred)
     }
 
     return [...rows].sort((a, b) => compareRows(a, b, sortCol, sortDir))
-  }, [captures, highlightedIds, search, sourceFilter, sentimentFilter, energyFilter, starredOnly, sortCol, sortDir])
+  }, [captures, highlightedIds, search, sourceFilter, sentimentFilter, energyFilter, phaseFilter, cycleProfile, starredOnly, sortCol, sortDir])
 
   // ── Chat send ──────────────────────────────────────────────────────────────
   const send = async (text: string) => {
@@ -484,6 +554,19 @@ export default function ExplorePage() {
 
             <div className="h-4 w-px bg-charcoal/8 dark:bg-white/[0.06] shrink-0" />
 
+            {(['rest', 'build', 'peak', 'release'] as const).map(p => (
+              <Fragment key={p}>
+                {filterPill(
+                  MENSTRUAL_LABELS[p],
+                  phaseFilter === p,
+                  () => setPhaseFilter(phaseFilter === p ? null : p),
+                  PHASE_STYLES[p],
+                )}
+              </Fragment>
+            ))}
+
+            <div className="h-4 w-px bg-charcoal/8 dark:bg-white/[0.06] shrink-0" />
+
             {filterPill(
               '★ starred',
               starredOnly,
@@ -543,6 +626,9 @@ export default function ExplorePage() {
                   <th className="sticky top-0 bg-cream dark:bg-[#0f0e0e] z-10 text-left px-3 py-[10px] w-[100px] border-b border-charcoal/8 dark:border-white/[0.07]">
                     {colHeader('capture_intent', 'Intent')}
                   </th>
+                  <th className="sticky top-0 bg-cream dark:bg-[#0f0e0e] z-10 text-left px-3 py-[10px] w-[120px] border-b border-charcoal/8 dark:border-white/[0.07]">
+                    {colHeader('cycle_day', 'Cycle')}
+                  </th>
                   <th className="sticky top-0 bg-cream dark:bg-[#0f0e0e] z-10 text-left px-3 py-[10px] pr-6 w-[160px] border-b border-charcoal/8 dark:border-white/[0.07]">
                     <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-charcoal/35 dark:text-[#5c5a57]">Themes</span>
                   </th>
@@ -596,6 +682,13 @@ export default function ExplorePage() {
                             {e.capture_intent}
                           </span>
                         )}
+                      </td>
+                      <td className="px-3 py-[10px] align-top pt-[12px]">
+                        <CycleCell
+                          cycleDay={e?.cycle_day}
+                          averageCycleLength={cycleProfile?.average_cycle_length}
+                          averagePeriodLength={cycleProfile?.average_period_length}
+                        />
                       </td>
                       <td className="px-3 py-[10px] pr-6 align-top pt-[11px]">
                         <div className="flex flex-wrap gap-[3px]">
@@ -732,6 +825,8 @@ export default function ExplorePage() {
         <CaptureModal
           capture={selectedCapture}
           onClose={() => setSelectedCapture(null)}
+          averageCycleLength={cycleProfile?.average_cycle_length}
+          averagePeriodLength={cycleProfile?.average_period_length}
         />
       )}
     </div>

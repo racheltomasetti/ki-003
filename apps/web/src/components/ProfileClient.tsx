@@ -3,9 +3,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { applyAccentColor } from '@/lib/accent'
 import { createClient } from '@/lib/supabase/client'
-import { updateMemoryDocument } from '@ki/services'
+import {
+  updateMemoryDocument,
+  enableMenstrualTracking,
+  getCurrentCycleInfo,
+  getPeriodLogs,
+  getPeriodInstances,
+  logPeriodDay,
+  logPeriodRange,
+  updatePeriodInstance,
+  deletePeriodRange,
+} from '@ki/services'
+import { resolveCyclePhase, getLocalYYYYMMDD, type PeriodInstance } from '@ki/utils'
 import type { Profile } from '@ki/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -479,14 +491,362 @@ function ReEnrichCard() {
   )
 }
 
+// ─── Cycle card ──────────────────────────────────────────────────────────────
+// No standalone cycle surface (per docs/active/cycle-tracker.md) — this card
+// and the sidebar indicator are the whole UI. Opt in, log a period, backdate
+// one that already happened. Everything else is derived by Postgres.
+
+function CycleOptIn({ userId, onEnabled }: { userId: string; onEnabled: () => void }) {
+  const [avgCycleLength, setAvgCycleLength] = useState(28)
+  const [avgPeriodLength, setAvgPeriodLength] = useState(5)
+  const [saving, setSaving] = useState(false)
+
+  const handleEnable = async () => {
+    setSaving(true)
+    const supabase = createClient()
+    try {
+      await enableMenstrualTracking(supabase, userId, avgCycleLength, avgPeriodLength)
+      onEnabled()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 py-4">
+      <div className="font-sans text-[13px] font-medium text-charcoal dark:text-[#f0ede8] mb-[3px]">Connect your cycle</div>
+      <div className="font-sans text-[11px] text-charcoal/40 dark:text-[#5c5a57] leading-relaxed mb-4">
+        Every capture gets stamped with your cycle day — a layer underneath everything you capture, not a
+        separate tracker. These are just a starting point; Ki refines them from your real cycles over time.
+      </div>
+      <div className="flex items-end gap-4 mb-4">
+        <label className="flex flex-col gap-1">
+          <span className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] uppercase tracking-[0.06em]">Avg cycle length</span>
+          <input
+            type="number"
+            min={15}
+            max={60}
+            value={avgCycleLength}
+            onChange={e => setAvgCycleLength(Number(e.target.value))}
+            className="w-20 bg-charcoal/[0.04] dark:bg-white/[0.04] border border-charcoal/8 dark:border-white/[0.07] rounded-[8px] px-2.5 py-1.5 font-sans text-[12px] text-charcoal dark:text-[#f0ede8] outline-none focus:border-accent/40"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] uppercase tracking-[0.06em]">Avg period length</span>
+          <input
+            type="number"
+            min={1}
+            max={14}
+            value={avgPeriodLength}
+            onChange={e => setAvgPeriodLength(Number(e.target.value))}
+            className="w-20 bg-charcoal/[0.04] dark:bg-white/[0.04] border border-charcoal/8 dark:border-white/[0.07] rounded-[8px] px-2.5 py-1.5 font-sans text-[12px] text-charcoal dark:text-[#f0ede8] outline-none focus:border-accent/40"
+          />
+        </label>
+      </div>
+      <button
+        onClick={handleEnable}
+        disabled={saving}
+        className="px-4 py-[7px] rounded-[10px] font-sans text-[11.5px] font-medium bg-accent text-on-accent hover:opacity-90 cursor-pointer shadow-sm disabled:opacity-50"
+      >
+        {saving ? 'Connecting…' : 'Start tracking'}
+      </button>
+    </div>
+  )
+}
+
+function formatInstanceDate(date: string): string {
+  return new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function PeriodInstanceRow({
+  instance,
+  onSave,
+  onDelete,
+}: {
+  instance: PeriodInstance
+  onSave: (oldRange: PeriodInstance, newRange: { startDate: string; endDate: string }) => Promise<void>
+  onDelete: (instance: PeriodInstance) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [start, setStart] = useState(instance.startDate)
+  const [end, setEnd] = useState(instance.endDate)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const handleSave = async () => {
+    setBusy(true)
+    try {
+      await onSave(instance, { startDate: start, endDate: end })
+      setEditing(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) {
+      setDeleteConfirm(true)
+      return
+    }
+    setBusy(true)
+    try {
+      await onDelete(instance)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-end gap-2 py-1.5">
+        <label className="flex flex-col gap-1">
+          <span className="font-sans text-[9px] text-charcoal/35 dark:text-[#5c5a57]">Start</span>
+          <input
+            type="date"
+            value={start}
+            onChange={e => setStart(e.target.value)}
+            className="bg-charcoal/[0.04] dark:bg-white/[0.04] border border-charcoal/8 dark:border-white/[0.07] rounded-[8px] px-2 py-1 font-sans text-[11px] text-charcoal dark:text-[#f0ede8] outline-none focus:border-accent/40"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-sans text-[9px] text-charcoal/35 dark:text-[#5c5a57]">End</span>
+          <input
+            type="date"
+            value={end}
+            onChange={e => setEnd(e.target.value)}
+            className="bg-charcoal/[0.04] dark:bg-white/[0.04] border border-charcoal/8 dark:border-white/[0.07] rounded-[8px] px-2 py-1 font-sans text-[11px] text-charcoal dark:text-[#f0ede8] outline-none focus:border-accent/40"
+          />
+        </label>
+        <button
+          onClick={handleSave}
+          disabled={busy}
+          className="px-2.5 py-1 rounded-[7px] font-sans text-[10.5px] font-medium bg-accent text-on-accent hover:opacity-90 cursor-pointer disabled:opacity-50"
+        >
+          Save
+        </button>
+        <button
+          onClick={() => setEditing(false)}
+          disabled={busy}
+          className="px-2.5 py-1 rounded-[7px] font-sans text-[10.5px] text-charcoal/45 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#f0ede8] cursor-pointer"
+        >
+          Cancel
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center justify-between py-1.5 group">
+      <span className="font-sans text-[12px] text-charcoal/70 dark:text-[#9e9b96]">
+        {formatInstanceDate(instance.startDate)} – {formatInstanceDate(instance.endDate)}
+        <span className="text-charcoal/35 dark:text-[#5c5a57]"> · {instance.dayCount}d</span>
+      </span>
+      <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={() => setEditing(true)}
+          className="font-sans text-[10.5px] text-charcoal/45 dark:text-[#5c5a57] hover:text-accent cursor-pointer"
+        >
+          Edit
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={busy}
+          className={[
+            'font-sans text-[10.5px] cursor-pointer',
+            deleteConfirm ? 'text-terra font-medium' : 'text-charcoal/45 dark:text-[#5c5a57] hover:text-terra',
+          ].join(' ')}
+        >
+          {deleteConfirm ? 'Confirm' : 'Delete'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function CycleTracking({ profile }: { profile: Profile }) {
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+  const [rangeStart, setRangeStart] = useState('')
+  const [rangeEnd, setRangeEnd] = useState('')
+  const [logging, setLogging] = useState(false)
+
+  const cycleInfoKey = ['cycle-info', profile.id]
+  const logsKey = ['period-logs', profile.id]
+  const instancesKey = ['period-instances', profile.id]
+
+  const { data: cycleInfo } = useQuery({
+    queryKey: cycleInfoKey,
+    queryFn: () => getCurrentCycleInfo(supabase, profile.id),
+  })
+  const { data: logs = [] } = useQuery({
+    queryKey: logsKey,
+    queryFn: () => getPeriodLogs(supabase, profile.id, 10),
+  })
+  const { data: instances = [] } = useQuery({
+    queryKey: instancesKey,
+    queryFn: () => getPeriodInstances(supabase, profile.id),
+  })
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: cycleInfoKey })
+    queryClient.invalidateQueries({ queryKey: logsKey })
+    queryClient.invalidateQueries({ queryKey: instancesKey })
+  }
+
+  const handleUpdateInstance = async (
+    oldRange: PeriodInstance,
+    newRange: { startDate: string; endDate: string },
+  ) => {
+    await updatePeriodInstance(supabase, profile.id, oldRange, newRange)
+    invalidate()
+  }
+
+  const handleDeleteInstance = async (instance: PeriodInstance) => {
+    await deletePeriodRange(supabase, profile.id, instance.startDate, instance.endDate)
+    invalidate()
+  }
+
+  const today = getLocalYYYYMMDD()
+  const loggedToday = logs.some(l => l.date === today)
+
+  const handleLogToday = async () => {
+    setLogging(true)
+    try {
+      await logPeriodDay(supabase, profile.id)
+      invalidate()
+    } finally {
+      setLogging(false)
+    }
+  }
+
+  const handleLogRange = async () => {
+    if (!rangeStart || !rangeEnd) return
+    setLogging(true)
+    try {
+      await logPeriodRange(supabase, profile.id, rangeStart, rangeEnd)
+      setRangeStart('')
+      setRangeEnd('')
+      invalidate()
+    } finally {
+      setLogging(false)
+    }
+  }
+
+  const phaseInfo = cycleInfo?.cycleDay
+    ? resolveCyclePhase(cycleInfo.cycleDay, {
+        averageCycleLength: profile.average_cycle_length,
+        averagePeriodLength: profile.average_period_length,
+      })
+    : null
+
+  return (
+    <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] px-5 py-4">
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div>
+          <div className="font-sans text-[13px] font-medium text-charcoal dark:text-[#f0ede8] mb-[3px]">
+            {phaseInfo ? `Day ${cycleInfo!.cycleDay} · ${phaseInfo.label}` : 'No period logged yet'}
+          </div>
+          <div className="font-sans text-[11px] text-charcoal/40 dark:text-[#5c5a57]">
+            Avg cycle {profile.average_cycle_length ?? '—'} days · Avg period {profile.average_period_length ?? '—'} days
+          </div>
+        </div>
+        <button
+          onClick={handleLogToday}
+          disabled={logging || loggedToday}
+          className={[
+            'shrink-0 px-4 py-[7px] rounded-[10px] font-sans text-[11.5px] font-medium transition-all',
+            loggedToday
+              ? 'bg-sage/10 text-sage cursor-default'
+              : 'bg-accent text-on-accent hover:opacity-90 cursor-pointer shadow-sm disabled:opacity-50',
+          ].join(' ')}
+        >
+          {loggedToday ? 'Logged today ✓' : logging ? 'Logging…' : 'Log period today'}
+        </button>
+      </div>
+
+      <div className="border-t border-charcoal/8 dark:border-white/[0.07] pt-4">
+        <div className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] uppercase tracking-[0.06em] mb-2">
+          Log a past period
+        </div>
+        <div className="flex items-end gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="font-sans text-[10px] text-charcoal/35 dark:text-[#5c5a57]">Start</span>
+            <input
+              type="date"
+              value={rangeStart}
+              onChange={e => setRangeStart(e.target.value)}
+              className="bg-charcoal/[0.04] dark:bg-white/[0.04] border border-charcoal/8 dark:border-white/[0.07] rounded-[8px] px-2.5 py-1.5 font-sans text-[12px] text-charcoal dark:text-[#f0ede8] outline-none focus:border-accent/40"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-sans text-[10px] text-charcoal/35 dark:text-[#5c5a57]">End</span>
+            <input
+              type="date"
+              value={rangeEnd}
+              onChange={e => setRangeEnd(e.target.value)}
+              className="bg-charcoal/[0.04] dark:bg-white/[0.04] border border-charcoal/8 dark:border-white/[0.07] rounded-[8px] px-2.5 py-1.5 font-sans text-[12px] text-charcoal dark:text-[#f0ede8] outline-none focus:border-accent/40"
+            />
+          </label>
+          <button
+            onClick={handleLogRange}
+            disabled={logging || !rangeStart || !rangeEnd}
+            className="px-3.5 py-[7px] rounded-[10px] font-sans text-[11.5px] font-medium bg-charcoal/[0.06] dark:bg-white/[0.08] text-charcoal dark:text-[#f0ede8] hover:bg-charcoal/10 dark:hover:bg-white/[0.12] cursor-pointer disabled:opacity-40"
+          >
+            Log
+          </button>
+        </div>
+      </div>
+
+      {instances.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-charcoal/8 dark:border-white/[0.07]">
+          <div className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] uppercase tracking-[0.06em] mb-1">
+            Period logs
+          </div>
+          <div className="flex flex-col divide-y divide-charcoal/[0.05] dark:divide-white/[0.04]">
+            {instances.map(instance => (
+              <PeriodInstanceRow
+                key={instance.startDate}
+                instance={instance}
+                onSave={handleUpdateInstance}
+                onDelete={handleDeleteInstance}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CycleCard({ profile }: { profile: Profile }) {
+  const router = useRouter()
+  const [justEnabled, setJustEnabled] = useState(false)
+
+  if (profile.cycle_type !== 'menstrual' && !justEnabled) {
+    return (
+      <CycleOptIn
+        userId={profile.id}
+        onEnabled={() => {
+          setJustEnabled(true)
+          router.refresh()
+        }}
+      />
+    )
+  }
+
+  return <CycleTracking profile={profile} />
+}
+
 function SettingsTab({
   mounted,
   accentColor,
   onAccentChange,
+  profile,
 }: {
   mounted: boolean
   accentColor: string
   onAccentChange: (color: string) => void
+  profile: Profile | null
 }) {
   const { theme, setTheme } = useTheme()
 
@@ -574,6 +934,16 @@ function SettingsTab({
           </div>
         </div>
       </div>
+
+      {/* Cycle */}
+      {profile && (
+        <div className="mb-[30px]">
+          <div className="font-sans text-[11px] font-medium text-charcoal/55 dark:text-[#9e9b96] uppercase tracking-[0.08em] mb-4">
+            Cycle
+          </div>
+          <CycleCard profile={profile} />
+        </div>
+      )}
 
       {/* Corpus */}
       <div>
@@ -694,6 +1064,7 @@ export function ProfileClient({ profile, userEmail, displayName }: ProfileClient
             mounted={mounted}
             accentColor={accentColor}
             onAccentChange={handleAccentChange}
+            profile={profile}
           />
         )}
         {tab === 'integrations' && <IntegrationsTab />}
