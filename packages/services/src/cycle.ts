@@ -8,7 +8,7 @@
 // average_period_length directly — those are always derived.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { CycleType, PeriodLog } from '@ki/types'
+import type { CycleType, DailyLog, PeriodLog } from '@ki/types'
 import { getLocalYYYYMMDD, clusterPeriodDates, type PeriodInstance } from '@ki/utils'
 
 /** Inclusive list of YYYY-MM-DD dates from start through end, local time. */
@@ -179,6 +179,24 @@ export async function updatePeriodInstance(
 ) {
   await deletePeriodRange(client, userId, oldRange.startDate, oldRange.endDate)
   return logPeriodRange(client, userId, newRange.startDate, newRange.endDate)
+}
+
+// ─── Daily logs ─────────────────────────────────────────────────────────────
+
+/** Most recent daily logs for a user, most recent first. */
+export async function getDailyLogs(
+  client: SupabaseClient,
+  userId: string,
+  limit = 90,
+): Promise<DailyLog[]> {
+  const { data, error } = await client
+    .from('daily_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .order('log_date', { ascending: false })
+    .limit(limit)
+  if (error) return []
+  return data as DailyLog[]
 }
 
 // ─── Live cycle info ────────────────────────────────────────────────────────

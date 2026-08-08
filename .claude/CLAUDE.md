@@ -306,3 +306,17 @@ cd apps/mobile && npx expo run:ios   # Run on iOS simulator
 - Do not allow more than 3 active pursuits per user — enforce at the service layer
 - Do not write `pursuit_connections` from the app — only `enrich-capture` and `match-corpus-to-pursuit` Edge Functions write this field
 - Read `docs/MISSION.md` before any product decision. Read `docs/PURSUIT_MODEL.md` before any schema or service work.
+
+---
+
+## Backlog
+
+Known future work, parked here so it surfaces every session instead of living in one conversation's memory. Check this before starting new work — it may already be scoped.
+
+- **Give `chat-with-ki` / `pursuit-agent` full-corpus pattern context**, not just per-message RAG + today's day/phase. The pattern-counting logic exists today only as a client-side React hook (`apps/web/src/hooks/usePatternsData.ts`) — it can't be called from the edge functions as-is. When this is built, move it into a single Postgres function (mirroring `compute_cycle_day`'s role) so the Patterns view and both edge functions call one source of truth instead of duplicating the grouping logic a third time. **Gated on the enrichment pipeline stabilizing first** — the aggregation keys off `mood_tags`/`themes`; if those fields change shape, one SQL function is one place to update instead of three (web hook, `chat-with-ki`, `pursuit-agent`).
+
+- **`/onboarding` first-run route.** Doesn't exist yet — sign-up currently drops straight into the app with no sequence at all. Spec'd as the natural home for "connect to your cycle" (last period start, avg cycle/period length) and, since it's being built anyway, a first pursuit + core question prompt + first capture rather than an empty Home. See `docs/active/cycle-tracker.md` Phase B.
+
+- **Voice check-in for `daily_logs`** (direction, not yet locked). `daily_logs` (`energy_level`, `emotions`, `body_signals`) has zero consuming UI today — nothing writes to it. Under exploration: a voice capture with its own third enrichment profile (alongside `personal`/`artifact`) that extracts the `daily_logs` shape from the transcript, instead of a manual multi-select widget. Open question not yet resolved: does the capture's enrichment also upsert `daily_logs`, or does something else populate it directly? See `docs/active/cycle-tracker.md` Open Questions.
+
+- **Artifacts-with-tools.** `pursuit-agent` has no tool calling and generates no artifacts yet — `pursuit_artifacts` exists as a table but nothing writes to it. The planned next build after the Patterns view; motivated by wanting Ki to turn what it notices into something tangible (a saved artifact) instead of only describing it in a chat reply.

@@ -63,6 +63,32 @@ export function resolveCyclePhase(
   return { phase, label: MENSTRUAL_LABELS[phase], day: cycleDay, length }
 }
 
+export interface PhaseRange {
+  phase: CyclePhase
+  label: string
+  startDay: number
+  endDay: number
+}
+
+/**
+ * Phase band boundaries for all 4 phases at once, given a cycle/period
+ * length — ported from terra-001's phaseUtils.ts getPhaseCycleDayRanges.
+ * Used for phase legends/bands (e.g. the Patterns view), not for resolving
+ * a single day — use resolveCyclePhase for that. A band with startDay >
+ * endDay (very short cycles) is degenerate and callers should skip it.
+ */
+export function getPhaseCycleDayRanges(cycleLength: number, periodLength: number): PhaseRange[] {
+  const ovulationDay = getEstimatedOvulationDay(cycleLength)
+  const fertileStart = ovulationDay - 1
+  const fertileEnd = ovulationDay + 1
+  return [
+    { phase: 'rest', label: MENSTRUAL_LABELS.rest, startDay: 1, endDay: periodLength },
+    { phase: 'build', label: MENSTRUAL_LABELS.build, startDay: periodLength + 1, endDay: fertileStart - 1 },
+    { phase: 'peak', label: MENSTRUAL_LABELS.peak, startDay: fertileStart, endDay: fertileEnd },
+    { phase: 'release', label: MENSTRUAL_LABELS.release, startDay: fertileEnd + 1, endDay: cycleLength },
+  ]
+}
+
 // ─── Clustering ─────────────────────────────────────────────────────────────
 // Groups individual logged days (period_logs rows) into period instances —
 // the same "contiguous days = one cycle start" logic compute_cycle_day uses
@@ -75,7 +101,7 @@ export interface PeriodInstance {
   dayCount: number
 }
 
-function daysBetween(a: string, b: string): number {
+export function daysBetween(a: string, b: string): number {
   const start = new Date(a + 'T00:00:00')
   const end = new Date(b + 'T00:00:00')
   return Math.round((end.getTime() - start.getTime()) / 86_400_000)
@@ -95,4 +121,21 @@ export function clusterPeriodDates(sortedDates: string[]): PeriodInstance[] {
     }
   }
   return clusters.map(c => ({ startDate: c[0], endDate: c[c.length - 1], dayCount: c.length }))
+}
+
+/**
+ * Cycle day for an arbitrary date, given already-clustered period instances.
+ * Mirrors compute_cycle_day's SQL logic client-side — needed because unlike
+ * enrichments, daily_logs rows aren't stamped with cycle_day by Postgres, so
+ * consumers that need a daily_log's phase (e.g. the Patterns view) derive it
+ * here instead. Returns null if the date is before any known cycle start.
+ */
+export function cycleDayForDate(date: string, periodInstances: PeriodInstance[]): number | null {
+  const start = periodInstances
+    .map(p => p.startDate)
+    .filter(startDate => startDate <= date)
+    .sort()
+    .pop()
+  if (!start) return null
+  return daysBetween(start, date) + 1
 }
