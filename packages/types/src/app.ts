@@ -79,6 +79,7 @@ export interface Capture {
   parent_id: string | null
   chunk_index: number | null
   is_chunked: boolean
+  flow_id: string | null            // derived, stamped by Postgres — never by the app
   enrichment_profile: EnrichmentProfile
   status: CaptureStatus
   visibility: Visibility
@@ -150,6 +151,27 @@ export interface DailyLog {
   created_at: string
   updated_at: string
 }
+
+// ─── Flow tracker ───────────────────────────────────────────────────────────
+// A universal start/stop timer. One flow can be running per user at a time
+// (enforced in Postgres, see migration 020_flows.sql). Captures made while
+// a flow is running are auto-linked via Capture.flow_id — stamped by
+// Postgres, never written by the app.
+
+export interface Flow {
+  id: string
+  user_id: string
+  label: string
+  started_at: string
+  ended_at: string | null
+  energy_after: number | null       // 1-5
+  debrief: string | null
+  cycle_day: number | null          // derived, stamped by Postgres — never by the app
+  cycle_start_date: string | null
+  created_at: string
+}
+
+export type FlowEndInput = Partial<Pick<Flow, 'debrief' | 'energy_after'>>
 
 export type PursuitStatus = 'active' | 'curiosity' | 'archived'
 

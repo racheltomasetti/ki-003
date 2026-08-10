@@ -315,6 +315,7 @@ export type Database = {
           chunk_index: number | null
           created_at: string
           enrichment_profile: string
+          flow_id: string | null
           fts_body: unknown
           id: string
           is_chunked: boolean
@@ -339,6 +340,7 @@ export type Database = {
           chunk_index?: number | null
           created_at?: string
           enrichment_profile: string
+          flow_id?: string | null
           fts_body?: unknown
           id?: string
           is_chunked?: boolean
@@ -363,6 +365,7 @@ export type Database = {
           chunk_index?: number | null
           created_at?: string
           enrichment_profile?: string
+          flow_id?: string | null
           fts_body?: unknown
           id?: string
           is_chunked?: boolean
@@ -382,6 +385,13 @@ export type Database = {
           visibility?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "captures_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "flows"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "captures_parent_id_fkey"
             columns: ["parent_id"]
@@ -521,6 +531,53 @@ export type Database = {
             columns: ["capture_id"]
             isOneToOne: true
             referencedRelation: "captures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flows: {
+        Row: {
+          created_at: string
+          cycle_day: number | null
+          cycle_start_date: string | null
+          debrief: string | null
+          ended_at: string | null
+          energy_after: number | null
+          id: string
+          label: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cycle_day?: number | null
+          cycle_start_date?: string | null
+          debrief?: string | null
+          ended_at?: string | null
+          energy_after?: number | null
+          id?: string
+          label: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cycle_day?: number | null
+          cycle_start_date?: string | null
+          debrief?: string | null
+          ended_at?: string | null
+          energy_after?: number | null
+          id?: string
+          label?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

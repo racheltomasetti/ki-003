@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActivePursuits, getProfile } from '@ki/services'
 import { Sidebar } from '@/components/Sidebar'
+import { FlowTrackerBar } from '@/components/FlowTrackerBar'
 import type { Pursuit, Profile } from '@ki/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         userEmail={user?.email ?? null}
       />
       <main className="flex-1 overflow-hidden bg-cream dark:bg-[#0f0e0e] flex flex-col">
+        {user && <FlowTrackerBar userId={user.id} />}
         {children}
       </main>
     </div>
