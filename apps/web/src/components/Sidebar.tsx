@@ -166,14 +166,12 @@ export function Sidebar({
                       : 'text-charcoal/50 dark:text-[#9e9b96] hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/[0.03] dark:hover:bg-white/[0.03]',
                 ].join(' ')}
               >
-                {collapsed
-                  ? (
-                    <span className={active ? 'text-accent' : 'opacity-70'}>
-                      <Icon className="block size-[1.125rem]" />
-                    </span>
-                  )
-                  : label
-                }
+                <span className={active ? 'text-accent' : 'opacity-70'}>
+                  <Icon className="block size-[1.125rem]" />
+                </span>
+                {!collapsed && (
+                  <span className="ml-2.5 truncate">{label}</span>
+                )}
               </Link>
             )
           })}

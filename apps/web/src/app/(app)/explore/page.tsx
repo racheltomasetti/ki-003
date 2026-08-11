@@ -186,40 +186,54 @@ function CaptureModal({
                 </div>
               )}
 
-              {(e.sentiment || e.energy_level || e.capture_intent || e.time_of_day_cat) && (
-                <div className="px-4 py-3 border-b border-charcoal/8 dark:border-white/[0.07] flex flex-wrap gap-4">
+              {(e.sentiment || e.energy_level || e.capture_intent || e.time_of_day_cat || e.cycle_day) && (
+                <div className="px-4 py-3 border-b border-charcoal/8 dark:border-white/[0.07] grid grid-cols-2 sm:grid-cols-5 gap-x-3 gap-y-3">
                   {e.sentiment && (
-                    <div>
-                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-[5px]">Sentiment</div>
-                      <SentimentBadge value={e.sentiment} />
+                    <div className="min-w-0 flex flex-col gap-1.5">
+                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em]">Sentiment</div>
+                      <div className="flex items-center min-h-[1.375rem]">
+                        <SentimentBadge value={e.sentiment} />
+                      </div>
                     </div>
                   )}
                   {e.energy_level && (
-                    <div>
-                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-[5px]">Energy</div>
-                      <EnergyBadge value={e.energy_level} />
+                    <div className="min-w-0 flex flex-col gap-1.5">
+                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em]">Energy</div>
+                      <div className="flex items-center min-h-[1.375rem]">
+                        <EnergyBadge value={e.energy_level} />
+                      </div>
                     </div>
                   )}
                   {e.capture_intent && (
-                    <div>
-                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-[5px]">Intent</div>
-                      <span className="font-sans text-[10px] text-charcoal/45 dark:text-[#9e9b96] capitalize">{e.capture_intent}</span>
+                    <div className="min-w-0 flex flex-col gap-1.5">
+                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em]">Intent</div>
+                      <div className="flex items-center min-h-[1.375rem]">
+                        <span className="inline-block font-sans text-[9px] px-[6px] py-[2px] rounded-full border capitalize whitespace-nowrap bg-charcoal/[0.04] dark:bg-white/[0.04] text-charcoal/45 dark:text-[#9e9b96] border-charcoal/8 dark:border-white/[0.06]">
+                          {e.capture_intent}
+                        </span>
+                      </div>
                     </div>
                   )}
                   {e.time_of_day_cat && (
-                    <div>
-                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-[5px]">Time</div>
-                      <span className="font-sans text-[10px] text-charcoal/45 dark:text-[#9e9b96] capitalize">{e.time_of_day_cat}</span>
+                    <div className="min-w-0 flex flex-col gap-1.5">
+                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em]">Time</div>
+                      <div className="flex items-center min-h-[1.375rem]">
+                        <span className="inline-block font-sans text-[9px] px-[6px] py-[2px] rounded-full border capitalize whitespace-nowrap bg-charcoal/[0.04] dark:bg-white/[0.04] text-charcoal/45 dark:text-[#9e9b96] border-charcoal/8 dark:border-white/[0.06]">
+                          {e.time_of_day_cat}
+                        </span>
+                      </div>
                     </div>
                   )}
                   {e.cycle_day && (
-                    <div>
-                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-[5px]">Cycle</div>
-                      <CycleBadge
-                        cycleDay={e.cycle_day}
-                        averageCycleLength={averageCycleLength}
-                        averagePeriodLength={averagePeriodLength}
-                      />
+                    <div className="min-w-0 flex flex-col gap-1.5 col-span-2 sm:col-span-1">
+                      <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em]">Cycle</div>
+                      <div className="flex items-center min-h-[1.375rem]">
+                        <CycleBadge
+                          cycleDay={e.cycle_day}
+                          averageCycleLength={averageCycleLength}
+                          averagePeriodLength={averagePeriodLength}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

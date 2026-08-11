@@ -59,8 +59,8 @@ export function CycleBadge({
   if (!cycleDay) return null
   const phaseInfo = resolveCyclePhase(cycleDay, { averageCycleLength, averagePeriodLength })
   return (
-    <div className="flex items-center gap-[6px] whitespace-nowrap">
-      <span className="font-sans text-[10px] text-charcoal/40 dark:text-[#9e9b96]">Day {cycleDay}</span>
+    <div className="flex items-center gap-1.5 min-w-0">
+      <span className="font-sans text-[9px] text-charcoal/40 dark:text-[#9e9b96] shrink-0">Day {cycleDay}</span>
       <span className={`inline-block font-sans text-[9px] px-[6px] py-[2px] rounded-full border whitespace-nowrap ${PHASE_STYLES[phaseInfo.phase]}`}>
         {phaseInfo.label}
       </span>
