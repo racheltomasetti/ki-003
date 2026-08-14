@@ -383,8 +383,8 @@ export function QuickCapture({ pursuits, userId }: Props) {
     try {
       const capture = await createCapture(supabase, {
         user_id: userId,
-        type: 'voice',
-        source_type: 'voice',
+        type: inputMode,
+        source_type: inputMode,
         enrichment_profile: 'personal',
         title: title || null,
         body,
