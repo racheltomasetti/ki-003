@@ -391,15 +391,32 @@ function CaptureDetailPanel({
         {enrichment?.enrichment_status === 'complete' && (
           <div className="bg-charcoal/[0.03] dark:bg-[#161514] border border-charcoal/8 dark:border-white/[0.07] rounded-[14px] overflow-hidden mb-5">
 
-            {/* Summary */}
-            {enrichment.summary && (
+            {/* Summary — Day badge sits top-right when stamped */}
+            {(enrichment.summary || enrichment.cycle_day) && (
               <div className="px-5 py-4 border-b border-charcoal/8 dark:border-white/[0.07]">
-                <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em] mb-2">
-                  Summary
+                <div className={[
+                  'flex items-center gap-3',
+                  enrichment.summary ? 'justify-between mb-2' : 'justify-end',
+                ].join(' ')}>
+                  {enrichment.summary && (
+                    <div className="text-[9px] font-semibold text-charcoal/30 dark:text-[#5c5a57] uppercase tracking-[0.12em]">
+                      Summary
+                    </div>
+                  )}
+                  {enrichment.cycle_day != null && (
+                    <span
+                      title={`Day ${enrichment.cycle_day} of your cycle when this was captured`}
+                      className="shrink-0 whitespace-nowrap inline-flex items-center justify-center h-[1.5rem] rounded-full border border-accent/25 bg-accent/10 px-2.5 font-sans text-[0.625rem] font-medium text-accent"
+                    >
+                      Day {enrichment.cycle_day}
+                    </span>
+                  )}
                 </div>
-                <p className="font-serif text-[13px] font-light italic text-charcoal/60 dark:text-[#9e9b96] leading-relaxed">
-                  {enrichment.summary}
-                </p>
+                {enrichment.summary && (
+                  <p className="font-serif text-[13px] font-light italic text-charcoal/60 dark:text-[#9e9b96] leading-relaxed">
+                    {enrichment.summary}
+                  </p>
+                )}
               </div>
             )}
 

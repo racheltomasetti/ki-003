@@ -102,7 +102,7 @@ export function FlowTrackerBar({ userId }: { userId: string }) {
           disabled={busy || !label.trim()}
           className="shrink-0 px-3 py-1 rounded-[7px] font-sans text-[10.5px] font-medium bg-accent text-on-accent hover:opacity-90 disabled:opacity-40 cursor-pointer"
         >
-          Start
+          Start Flow
         </button>
       </div>
     )
