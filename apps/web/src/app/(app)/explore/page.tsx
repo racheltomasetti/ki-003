@@ -667,7 +667,12 @@ export default function ExplorePage() {
                         </div>
                       </td>
                       <td className="px-3 py-[10px] align-top pt-[13px]">
-                        <SrcIcon className="text-[13px] text-charcoal/20 dark:text-[#5c5a57]" />
+                        <SrcIcon
+                          className={[
+                            c.source_type === 'voice' ? 'text-[20px]' : 'text-[13px]',
+                            'text-charcoal/20 dark:text-[#5c5a57]',
+                          ].join(' ')}
+                        />
                       </td>
                       <td className="px-3 py-[10px] align-top pt-[13px]">
                         {c.is_starred && <span className="text-ray text-[12px]">★</span>}
