@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { LuLibrary } from 'react-icons/lu'
 import { HiMiniHome } from 'react-icons/hi2'
 import { IoCompassOutline } from 'react-icons/io5'
-import { MdChecklist, MdLightMode, MdOutlineInsights } from 'react-icons/md'
+import { MdChecklist, MdLightMode, MdOutlineInsights, MdOutlineAutoAwesome } from 'react-icons/md'
 import { IoMoon } from "react-icons/io5";
 import { getCurrentCycleInfo } from '@ki/services'
 import { createClient } from '@/lib/supabase/client'
@@ -52,6 +52,7 @@ const NAV: { href: string; label: string; Icon: ComponentType<{ className?: stri
   { href: '/home', label: 'Home', Icon: HiMiniHome },
   { href: '/library', label: 'Corpus', Icon: LuLibrary },
   { href: '/explore', label: 'Explore', Icon: IoCompassOutline },
+  { href: '/create', label: 'Create', Icon: MdOutlineAutoAwesome },
   { href: '/patterns', label: 'Patterns', Icon: MdOutlineInsights },
   { href: '/todos', label: 'Todos', Icon: MdChecklist },
 ]

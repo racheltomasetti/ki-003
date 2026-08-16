@@ -8,7 +8,8 @@
 // SupabaseClient with SupabaseClient<Database> from @ki/types for full type inference.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Capture, CaptureInsert, CaptureStatus } from '@ki/types'
+import type { Capture, CaptureInsert, CaptureStatus, DistilledCaptureMetadata } from '@ki/types'
+import { addCaptureToPursuit } from './pursuits'
 
 export interface GetCapturesOptions {
   status?: CaptureStatus
@@ -107,6 +108,61 @@ export async function createCapture(
     .single()
   if (error) throw error
   return data as Capture
+}
+
+export interface SaveArtifactCaptureParams {
+  userId: string
+  body: string
+  title?: string | null
+  referencedCaptureIds: string[]
+  pursuitId?: string   // present when saved from a pursuit workspace, absent from global Create
+}
+
+/**
+ * Save a Create-panel artifact (or a distilled chat message) as a capture.
+ * The single save path for both the pursuit workspace and global Create —
+ * replaces any direct-insert done in a component. enrichment_profile is
+ * 'distilled' (not 'personal'): enrich-capture doesn't yet branch on this
+ * field for any value, so it's a no-op today, but it's the semantically
+ * correct value migration 010 exists for.
+ */
+export async function saveArtifactCapture(
+  client: SupabaseClient,
+  params: SaveArtifactCaptureParams
+): Promise<Capture> {
+  const { userId, body, title, referencedCaptureIds, pursuitId } = params
+  const distilledAt = new Date().toISOString()
+
+  const metadata: DistilledCaptureMetadata = {
+    referenced_capture_ids: referencedCaptureIds,
+    distilled_at: distilledAt,
+    ...(pursuitId ? { pursuit_id: pursuitId } : {}),
+  }
+
+  const { data, error } = await client
+    .from('captures')
+    .insert({
+      user_id: userId,
+      type: 'text',
+      source_type: 'distilled',
+      enrichment_profile: 'distilled',
+      title: title ?? null,
+      body,
+      captured_at: distilledAt,
+      source_metadata: metadata,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  const capture = data as Capture
+
+  if (pursuitId) {
+    const { error: linkError } = await addCaptureToPursuit(client, capture.id, pursuitId, userId)
+    if (linkError) throw linkError
+  }
+
+  return capture
 }
 
 // body is the one field that is never updated after write — enforced here

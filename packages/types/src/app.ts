@@ -180,12 +180,29 @@ export type PursuitMode = 'building' | 'exploring' | 'becoming' | 'figuring_out'
 export type PursuitConversationRole = 'hero' | 'ki'
 
 // source_metadata shape for distilled captures (source_type === 'distilled').
-// Written at save time by the thought distiller — never by the enrichment pipeline.
+// Written at save time by Create/the thought distiller — never by the enrichment pipeline.
 export interface DistilledCaptureMetadata {
   referenced_capture_ids: string[]   // UUIDs of the captures Ki drew from during distillation
   distilled_at: string               // ISO timestamp of when the user saved this distilled thought
-  pursuit_id: string                 // the pursuit workspace where this was distilled
+  pursuit_id?: string                // the pursuit workspace this was distilled in, if any — absent when saved from global Create
 }
+
+// ─── Artifacts ──────────────────────────────────────────────────────────────
+// Discriminated union, deliberately extensible — v1 ships 'prose' only.
+// Widen ArtifactKind + add a union member when a second kind ships; see
+// .claude/ARTIFACTS_BUILD_PLAN.md for outline/mermaid shapes to reconcile
+// against then (that plan predates this tool-calling integration).
+
+export type ArtifactKind = 'prose'
+
+export interface ProseArtifact {
+  kind: 'prose'
+  title?: string
+  text: string
+  referenced_capture_ids: string[]
+}
+
+export type Artifact = ProseArtifact
 
 // Shape of each entry in enrichments.pursuit_connections jsonb column.
 // Written by enrich-capture (live) and match-corpus-to-pursuit (retroactive).

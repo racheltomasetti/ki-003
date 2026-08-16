@@ -4,9 +4,11 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 import { IoMdSettings } from 'react-icons/io'
+import { LuArrowLeft } from 'react-icons/lu'
 import { createClient } from '@/lib/supabase/client'
-import { addPursuitMessage, clearPursuitConversation } from '@ki/services'
-import type { Pursuit, CaptureWithEnrichment, PursuitConversation } from '@ki/types'
+import { addPursuitMessage, clearPursuitConversation, saveArtifactCapture } from '@ki/services'
+import { ArtifactPanel } from '@/components/ArtifactPanel'
+import type { Pursuit, CaptureWithEnrichment, PursuitConversation, Artifact } from '@ki/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -328,7 +330,10 @@ function highlightText(body: string, quote: string | null): React.ReactNode {
   return (
     <>
       {body.slice(0, idx)}
-      <mark className="bg-ray/40 dark:bg-ray/25 text-charcoal dark:text-[#f0ede8] rounded-sm px-0.5 not-italic">
+      <mark
+        id="cited-quote"
+        className="bg-accent/40 dark:bg-accent/25 text-charcoal dark:text-[#f0ede8] rounded-sm px-0.5 not-italic"
+      >
         {body.slice(idx, idx + quote.length)}
       </mark>
       {body.slice(idx + quote.length)}
@@ -353,6 +358,28 @@ function CorpusPanel({
 }) {
   const [search, setSearch] = useState('')
   const selected = captures.find(c => c.id === selectedId) ?? null
+  const bodyScrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!selectedId || !highlightQuote) return
+    let cancelled = false
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return
+        const container = bodyScrollRef.current
+        const mark = container?.querySelector('#cited-quote')
+        if (!container || !mark) return
+        const cRect = container.getBoundingClientRect()
+        const mRect = mark.getBoundingClientRect()
+        const delta = mRect.top - cRect.top - container.clientHeight / 2 + mRect.height / 2
+        container.scrollTo({ top: container.scrollTop + delta, behavior: 'smooth' })
+      })
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+    }
+  }, [selectedId, highlightQuote])
 
   // Detail view
   if (selected) {
@@ -362,12 +389,13 @@ function CorpusPanel({
 
     return (
       <div className="flex flex-col h-full bg-cream dark:bg-[#161514]">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
+        <div className="h-14 px-4 flex items-center gap-2 border-b border-charcoal/8 dark:border-white/7 shrink-0">
           <button
             onClick={onBack}
-            className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#9e9b96] transition-colors"
+            aria-label="Back to corpus"
+            className="size-8 -ml-1.5 flex items-center justify-center rounded-[7px] text-charcoal/45 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#f0ede8] hover:bg-charcoal/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
           >
-            ← corpus
+            <LuArrowLeft className="size-4" aria-hidden />
           </button>
           <span className="text-charcoal/15 dark:text-[#3a3835]">·</span>
           <span className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57]">
@@ -376,7 +404,7 @@ function CorpusPanel({
           {selected.is_starred && <span className="text-[10px] text-ray">★</span>}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div ref={bodyScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           <div className="font-serif text-sm text-charcoal dark:text-[#f0ede8] leading-relaxed whitespace-pre-wrap">
             {highlightText(selected.body ?? '', highlightQuote)}
           </div>
@@ -427,14 +455,7 @@ function CorpusPanel({
 
   return (
     <div className="flex flex-col h-full bg-cream dark:bg-[#161514]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
-        <span className="font-sans text-xs font-medium text-charcoal/60 dark:text-[#9e9b96]">
-          Corpus
-          <span className="ml-1.5 text-charcoal/35 dark:text-[#5c5a57]">({captures.length})</span>
-        </span>
-      </div>
-
-      <div className="px-3 py-2 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
+      <div className="h-14 px-3 flex items-center border-b border-charcoal/8 dark:border-white/7 shrink-0">
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -543,26 +564,17 @@ function ChatPanel({
   return (
     <div className="flex flex-col h-full bg-cream dark:bg-[#0f0e0e]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 border-b border-charcoal/8 dark:border-white/7 flex-shrink-0">
-        <div>
-          <p className="font-sans text-sm font-medium text-charcoal dark:text-[#f0ede8]">Ki</p>
-          <p className="font-sans text-[10px] text-charcoal/40 dark:text-[#5c5a57] mt-0.5">thinking partner</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {messages.length > 0 && (
-            <button
-              onClick={onClearMessages}
-              disabled={isThinking}
-              className="font-sans text-[10px] text-charcoal/30 dark:text-[#5c5a57] hover:text-charcoal/60 dark:hover:text-[#9e9b96] transition-colors disabled:opacity-30"
-            >
-              clear
-            </button>
-          )}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-charcoal/5 dark:bg-white/5 border border-charcoal/8 dark:border-white/7">
-            <div className="w-1.5 h-1.5 rounded-full bg-sage flex-shrink-0" />
-            <span className="font-sans text-[10px] text-charcoal/45 dark:text-[#5c5a57]">{captureCount} captures</span>
-          </div>
-        </div>
+      <div className="h-14 px-4 flex items-center justify-between border-b border-charcoal/8 dark:border-white/7 shrink-0">
+        <span className="font-sans text-[10px] font-semibold text-charcoal/45 dark:text-[#5c5a57] uppercase tracking-widest">
+          Distill
+        </span>
+        <button
+          onClick={onClearMessages}
+          disabled={isThinking || messages.length === 0}
+          className="font-sans text-[11px] text-charcoal/35 dark:text-[#5c5a57] hover:text-charcoal dark:hover:text-[#f0ede8] transition-colors px-2 py-1 rounded-[7px] border border-charcoal/10 dark:border-white/[0.07] hover:border-charcoal/20 dark:hover:border-white/[0.13] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+        >
+          clear
+        </button>
       </div>
 
       {/* Messages */}
@@ -675,35 +687,37 @@ function ChatPanel({
 
       {/* Input */}
       <div className="flex-shrink-0 px-4 pb-4 border-t border-charcoal/8 dark:border-white/7 pt-3">
-        <div className="flex flex-wrap gap-1.5 mb-2.5">
-          {suggestions.map(s => (
-            <button
-              key={s}
-              onClick={() => { setInput(s); inputRef.current?.focus() }}
-              className="font-sans text-[10px] px-2.5 py-1 rounded-full border border-charcoal/12 dark:border-white/8 text-charcoal/45 dark:text-[#5c5a57] hover:border-accent/40 hover:text-accent dark:hover:text-accent dark:hover:border-accent/40 transition-all bg-transparent"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        {messages.length === 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2.5">
+            {suggestions.map(s => (
+              <button
+                key={s}
+                onClick={() => { setInput(s); inputRef.current?.focus() }}
+                className="font-sans text-[10px] px-2.5 py-1 rounded-full border border-charcoal/12 dark:border-white/8 text-charcoal/45 dark:text-[#5c5a57] hover:border-accent/40 hover:text-accent dark:hover:text-accent dark:hover:border-accent/40 transition-all bg-transparent"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
 
-        <div className="flex items-end gap-2 bg-charcoal/[0.04] dark:bg-white/[0.05] border border-charcoal/10 dark:border-white/8 rounded-xl px-3 py-2 focus-within:border-charcoal/20 dark:focus-within:border-white/15 transition-colors">
+        <div className="flex items-center gap-2 bg-charcoal/[0.04] dark:bg-white/[0.05] border border-charcoal/10 dark:border-white/8 rounded-xl px-3 py-2 focus-within:border-charcoal/20 dark:focus-within:border-white/15 transition-colors">
           <textarea
             ref={inputRef}
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Talk to Ki about this pursuit…"
+            placeholder="What's on your mind?"
             rows={1}
             disabled={isThinking}
-            className="flex-1 bg-transparent border-none outline-none font-sans text-xs text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic resize-none leading-relaxed disabled:opacity-50"
-            style={{ minHeight: '20px', maxHeight: '112px' }}
+            className="flex-1 bg-transparent border-none outline-none font-sans text-xs leading-6 text-charcoal dark:text-[#f0ede8] placeholder:text-charcoal/30 dark:placeholder:text-[#5c5a57] placeholder:italic resize-none disabled:opacity-50"
+            style={{ minHeight: '24px', maxHeight: '112px' }}
           />
           <button
             onClick={send}
             disabled={!input.trim() || isThinking}
             className={[
-              'flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-all mb-0.5',
+              'flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-all',
               input.trim() && !isThinking
                 ? 'bg-accent text-on-accent hover:bg-accent/90'
                 : 'bg-charcoal/8 dark:bg-white/8 text-charcoal/25 dark:text-[#5c5a57] cursor-not-allowed',
@@ -751,6 +765,10 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
   const [isThinking, setIsThinking] = useState(false)
   const [savingMessageId, setSavingMessageId] = useState<string | null>(null)
 
+  const [artifact, setArtifact] = useState<Artifact | null>(null)
+  const [savingArtifact, setSavingArtifact] = useState(false)
+  const [artifactSaved, setArtifactSaved] = useState(false)
+
   const handleSelectCapture = (id: string, quote?: string) => {
     setSelectedCaptureId(id)
     setHighlightQuote(quote ?? null)
@@ -767,29 +785,39 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data: capture, error } = await supabase
-        .from('captures')
-        .insert({
-          user_id: user.id,
-          type: 'text',
-          source_type: 'distilled',
-          enrichment_profile: 'personal',
-          body: content,
-          captured_at: new Date().toISOString(),
-        })
-        .select()
-        .single()
-
-      if (error || !capture) throw error ?? new Error('Insert failed')
-
-      await supabase
-        .from('capture_pursuits')
-        .insert({ capture_id: capture.id, pursuit_id: pursuit.id, user_id: user.id })
-
+      const referencedCaptureIds = messageCitations.get(messageId)?.map(c => c.id) ?? []
+      await saveArtifactCapture(supabase, {
+        userId: user.id,
+        body: content,
+        referencedCaptureIds,
+        pursuitId: pursuit.id,
+      })
     } catch (err) {
       console.error('save message error:', err)
     } finally {
       setSavingMessageId(null)
+    }
+  }
+
+  const handleSaveArtifact = async () => {
+    if (!artifact) return
+    setSavingArtifact(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      await saveArtifactCapture(supabase, {
+        userId: user.id,
+        body: artifact.text,
+        title: artifact.title,
+        referencedCaptureIds: artifact.referenced_capture_ids,
+        pursuitId: pursuit.id,
+      })
+      setArtifactSaved(true)
+    } catch (err) {
+      console.error('save artifact error:', err)
+    } finally {
+      setSavingArtifact(false)
     }
   }
 
@@ -821,15 +849,25 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
       const history = messages.map(m => ({ role: m.role, content: m.content }))
 
       const { data, error: fnError } = await supabase.functions.invoke('pursuit-agent', {
-        body: { pursuit_id: pursuit.id, message: content, conversation_history: history },
+        body: {
+          pursuit_id: pursuit.id,
+          message: content,
+          conversation_history: history,
+          current_artifact: artifact ? { title: artifact.title, text: artifact.text } : null,
+        },
       })
 
       if (fnError) throw fnError
 
-      const agentData = data as { response: string; citations?: Citation[] }
+      const agentData = data as { response: string; citations?: Citation[]; artifact?: Artifact }
       const kiResponse = stripCitationsBlock(
         agentData.response ?? 'Something went wrong. Please try again.',
       )
+
+      if (agentData.artifact) {
+        setArtifact(agentData.artifact)
+        setArtifactSaved(false)
+      }
 
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -906,10 +944,10 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
       <div className="flex-1 min-h-0">
         <PanelGroup
           direction="horizontal"
-          autoSaveId={`pursuit-workspace-${pursuit.id}`}
+          autoSaveId={`pursuit-workspace-v2-${pursuit.id}`}
           className="h-full"
         >
-          <Panel defaultSize={35} minSize={20} maxSize={55} className="overflow-hidden">
+          <Panel defaultSize={25} minSize={18} maxSize={40} className="overflow-hidden">
             <CorpusPanel
               captures={captures}
               selectedId={selectedCaptureId}
@@ -921,7 +959,19 @@ export function PursuitDetailClient({ pursuit, captures, messages: initialMessag
 
           <PanelResizeHandle className="w-1.5 flex-shrink-0 bg-charcoal/8 dark:bg-white/7 hover:bg-accent/30 data-[resize-handle-active]:bg-accent/50 transition-colors cursor-col-resize" />
 
-          <Panel defaultSize={65} minSize={35} className="overflow-hidden">
+          <Panel defaultSize={35} minSize={22} maxSize={50} className="overflow-hidden">
+            <ArtifactPanel
+              artifact={artifact}
+              onChange={next => { setArtifact(next); setArtifactSaved(false) }}
+              onSave={handleSaveArtifact}
+              saving={savingArtifact}
+              saved={artifactSaved}
+            />
+          </Panel>
+
+          <PanelResizeHandle className="w-1.5 flex-shrink-0 bg-charcoal/8 dark:bg-white/7 hover:bg-accent/30 data-[resize-handle-active]:bg-accent/50 transition-colors cursor-col-resize" />
+
+          <Panel defaultSize={40} minSize={28} className="overflow-hidden">
             <ChatPanel
               captures={captures}
               captureCount={captures.length}

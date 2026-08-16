@@ -56,3 +56,8 @@ yarn.lock
 # Supabase
 supabase/.branches
 supabase/.temp
+
+# Edge function lockfile — local `deno check` (Deno 2.9+) writes lockfile
+# v5, which Supabase's deploy bundler (older Deno runtime) can't read.
+# Never commit this; let deploy manage its own.
+supabase/functions/deno.lock
