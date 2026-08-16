@@ -906,6 +906,26 @@ export type Database = {
           type: string
         }[]
       }
+      match_pursuit_captures: {
+        Args: {
+          match_count?: number
+          match_pursuit_id: string
+          match_user_id: string
+          query_embedding: string
+        }
+        Returns: {
+          body: string
+          captured_at: string
+          cycle_day: number
+          id: string
+          is_starred: boolean
+          questions_raised: string[]
+          similarity: number
+          summary: string
+          themes: string[]
+          title: string
+        }[]
+      }
       restamp_cycle_for_user: {
         Args: { p_user_id: string }
         Returns: undefined

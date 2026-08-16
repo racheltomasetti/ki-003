@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
     const { data: captures, error: rpcError } = await serviceClient.rpc('match_captures', {
       query_embedding: queryEmbedding,
       match_user_id: user.id,
-      match_count: 10,
+      match_count: 11,
     })
 
     if (rpcError) {

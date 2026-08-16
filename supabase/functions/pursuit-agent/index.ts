@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const SONNET_MODEL = 'claude-sonnet-4-6'
+const EMBEDDING_MODEL = 'text-embedding-3-small'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -8,21 +9,37 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+// ─── Embedding ────────────────────────────────────────────────────────────────
+
+async function embedText(text: string): Promise<number[]> {
+  const res = await fetch('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+    },
+    body: JSON.stringify({ model: EMBEDDING_MODEL, input: text }),
+  })
+  if (!res.ok) throw new Error(`OpenAI embedding error: ${res.status}`)
+  const data = await res.json()
+  return data.data[0].embedding as number[]
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
+// Flat shape returned by match_pursuit_captures (021_match_pursuit_captures.sql)
+// — RAG retrieval, not "every capture in the pursuit" (that didn't scale: a
+// mature pursuit sent its full corpus, uncapped, on every message).
 
 interface RawCapture {
   id: string
   title: string | null
   body: string | null
   captured_at: string
-  source_type: string
   is_starred: boolean
-  enrichments?: Array<{
-    summary: string | null
-    themes: string[] | null
-    questions_raised: string[] | null
-    cycle_day: number | null
-  }> | null
+  cycle_day: number | null
+  summary: string | null
+  themes: string[] | null
+  questions_raised: string[] | null
 }
 
 interface PursuitRow {
@@ -181,7 +198,7 @@ function formatPursuitContext(pursuit: PursuitRow): string {
 
 function formatCaptures(captures: RawCapture[], cycleProfile: CycleProfile | null): string {
   if (captures.length === 0) {
-    return 'No captures have been added to this pursuit yet.'
+    return 'No captures in this pursuit match yet.'
   }
 
   return captures.map((c, i) => {
@@ -190,16 +207,15 @@ function formatCaptures(captures: RawCapture[], cycleProfile: CycleProfile | nul
     })
     const starred = c.is_starred ? ' ★' : ''
     const label = c.title ?? `Capture ${i + 1}`
-    const enrichment = Array.isArray(c.enrichments) ? c.enrichments[0] : c.enrichments
-    const cycleTag = formatCaptureCycleTag(enrichment?.cycle_day ?? null, cycleProfile)
+    const cycleTag = formatCaptureCycleTag(c.cycle_day, cycleProfile)
 
     // Include the capture ID so Claude can cite it precisely
     let text = `[${label}${starred} — ${date}${cycleTag} | id:${c.id}]\n${c.body ?? '(no text body)'}`
 
-    if (enrichment?.summary) text += `\nSummary: ${enrichment.summary}`
-    if (enrichment?.themes?.length) text += `\nThemes: ${enrichment.themes.join(', ')}`
-    if (enrichment?.questions_raised?.length) {
-      text += `\nQuestions raised: ${enrichment.questions_raised.join(' / ')}`
+    if (c.summary) text += `\nSummary: ${c.summary}`
+    if (c.themes?.length) text += `\nThemes: ${c.themes.join(', ')}`
+    if (c.questions_raised?.length) {
+      text += `\nQuestions raised: ${c.questions_raised.join(' / ')}`
     }
 
     return text
@@ -256,24 +272,24 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Pursuit not found' }), { status: 404, headers: CORS_HEADERS })
     }
 
-    // ── Load all pursuit captures + enrichments ───────────────────────────────
-    const { data: captureRows } = await serviceClient
-      .from('capture_pursuits')
-      .select(`
-        captures (
-          id, title, body, captured_at, source_type, is_starred,
-          enrichments ( summary, themes, questions_raised, cycle_day )
-        )
-      `)
-      .eq('pursuit_id', pursuit_id)
-      .order('created_at', { ascending: true })
+    // ── RAG retrieval — the top 11 captures in this pursuit most relevant to
+    // this message, not every capture ever linked to it. The old "load
+    // everything" query sent a mature pursuit's full corpus, uncapped, on
+    // every single message — real token cost growth with no ceiling.
+    const queryEmbedding = await embedText(message)
 
-    const captures: RawCapture[] = (captureRows ?? [])
-      .map((row: { captures: unknown }) => {
-        const raw = row.captures
-        return (Array.isArray(raw) ? raw[0] : raw) as RawCapture | undefined
-      })
-      .filter((c): c is RawCapture => c !== undefined && Boolean(c.body))
+    const { data: captureRows, error: rpcError } = await serviceClient.rpc('match_pursuit_captures', {
+      query_embedding: queryEmbedding,
+      match_pursuit_id: pursuit_id,
+      match_user_id: user.id,
+      match_count: 11,
+    })
+
+    if (rpcError) {
+      console.error('match_pursuit_captures error:', rpcError)
+    }
+
+    const captures: RawCapture[] = captureRows ?? []
 
     // ── Load memory document + cycle preferences ──────────────────────────────
     const { data: profile } = await serviceClient
@@ -319,7 +335,7 @@ ${memoryDocument ? `Here is who this person is:\n\n${memoryDocument}\n\n` : ''}$
 
 ${formatPursuitContext(pursuit as PursuitRow)}
 
-Here are all their captured thoughts in this pursuit (each has an id field, and a cycle day tag where known — notice patterns tied to where the user was in their cycle when they captured it):
+Here are the captures from this pursuit most relevant to what they just said (each has an id field, and a cycle day tag where known — notice patterns tied to where the user was in their cycle when they captured it):
 
 ${formatCaptures(captures, cycleProfile)}
 
