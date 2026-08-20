@@ -613,6 +613,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_period_started_on: string | null
           avatar_url: string | null
           average_cycle_length: number | null
           average_period_length: number | null
@@ -626,6 +627,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_period_started_on?: string | null
           avatar_url?: string | null
           average_cycle_length?: number | null
           average_period_length?: number | null
@@ -639,6 +641,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_period_started_on?: string | null
           avatar_url?: string | null
           average_cycle_length?: number | null
           average_period_length?: number | null

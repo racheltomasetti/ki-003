@@ -1,11 +1,12 @@
 import type { ComponentType } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { getActivePursuits, getCaptureCounts, getCaptures } from '@ki/services'
+import { getActivePursuits, getCaptureCounts, getCaptures, getProfile } from '@ki/services'
 import Link from 'next/link'
 import { MdKeyboardVoice } from 'react-icons/md'
 import { FaPencil } from 'react-icons/fa6'
 import { IoAttach } from 'react-icons/io5'
 import { QuickCapture } from '@/components/QuickCapture'
+import { PeriodWidget } from '@/components/PeriodWidget'
 import type { Pursuit, CaptureWithEnrichment } from '@ki/types'
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
@@ -163,10 +164,11 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [{ data: pursuits }, counts, { data: recentRows }] = await Promise.all([
+  const [{ data: pursuits }, counts, { data: recentRows }, profile] = await Promise.all([
     getActivePursuits(supabase, user.id),
     getCaptureCounts(supabase, user.id),
     getCaptures(supabase, { status: 'active', limit: 5 }),
+    getProfile(supabase, user.id),
   ])
 
   const pursuitList = (pursuits ?? []) as Pursuit[]
@@ -181,6 +183,9 @@ export default async function HomePage() {
           <StatCard label="Total captures" value={counts.total} />
           <StatCard label="Distilled thoughts" value={counts.distilled} />
         </div>
+
+        {/* Period */}
+        {profile && <PeriodWidget profile={profile} />}
 
         {/* Widget row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:items-stretch">

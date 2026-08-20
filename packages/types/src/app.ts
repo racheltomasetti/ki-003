@@ -60,6 +60,7 @@ export interface Profile {
   cycle_type: CycleType | null
   average_cycle_length: number | null
   average_period_length: number | null
+  active_period_started_on: string | null
   created_at: string
   updated_at: string
 }

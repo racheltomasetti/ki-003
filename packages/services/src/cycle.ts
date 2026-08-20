@@ -9,7 +9,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CycleType, DailyLog, PeriodLog } from '@ki/types'
-import { getLocalYYYYMMDD, clusterPeriodDates, type PeriodInstance } from '@ki/utils'
+import { getLocalYYYYMMDD, daysBetween, clusterPeriodDates, type PeriodInstance } from '@ki/utils'
 
 /** Inclusive list of YYYY-MM-DD dates from start through end, local time. */
 function datesInRange(startDate: string, endDate: string): string[] {
@@ -229,4 +229,79 @@ export async function getCurrentCycleInfo(
 export function isPeriodActiveToday(logs: PeriodLog[]): boolean {
   const today = getLocalYYYYMMDD()
   return logs.some(log => log.date === today)
+}
+
+// ─── Active period (Home widget) ───────────────────────────────────────────
+// profiles.active_period_started_on is the one piece of state period_logs
+// itself can't express: whether a period is currently open, independent of
+// whether every day in between has been logged yet. Everything else about
+// the period (which days actually bled) still lives in period_logs alone.
+
+export interface ActivePeriodState {
+  startedOn: string | null
+  dayCount: number | null
+}
+
+export async function getActivePeriodState(
+  client: SupabaseClient,
+  userId: string,
+): Promise<ActivePeriodState> {
+  const { data, error } = await client
+    .from('profiles')
+    .select('active_period_started_on')
+    .eq('id', userId)
+    .single()
+  if (error || !data?.active_period_started_on) return { startedOn: null, dayCount: null }
+  const startedOn = data.active_period_started_on as string
+  return { startedOn, dayCount: daysBetween(startedOn, getLocalYYYYMMDD()) + 1 }
+}
+
+/**
+ * Start a period — defaults to today, or a past date if it's been going a
+ * few days already. Marks the period active and backfills period_logs for
+ * every day from startDate through today, so cycle_day stamping is correct
+ * immediately rather than waiting for endPeriod to reconcile it.
+ */
+export async function startPeriod(
+  client: SupabaseClient,
+  userId: string,
+  startDate: string = getLocalYYYYMMDD(),
+) {
+  await logPeriodRange(client, userId, startDate, getLocalYYYYMMDD())
+  return client
+    .from('profiles')
+    .update({ active_period_started_on: startDate })
+    .eq('id', userId)
+}
+
+/**
+ * While a period is active, call on every Home load so mid-period captures
+ * still get a same-day period_logs row (and correct cycle_day stamping)
+ * without requiring a visible daily tap. No-op if no period is active or
+ * today is already logged.
+ */
+export async function ensureTodayLoggedIfActive(client: SupabaseClient, userId: string) {
+  const { startedOn } = await getActivePeriodState(client, userId)
+  if (!startedOn) return
+  return logPeriodDay(client, userId)
+}
+
+/**
+ * End the active period — defaults to today, or a past date if it actually
+ * ended before now. Backfills period_logs for the full range (in case some
+ * days in between never got a silent same-day log) and clears the active
+ * marker.
+ */
+export async function endPeriod(
+  client: SupabaseClient,
+  userId: string,
+  endDate: string = getLocalYYYYMMDD(),
+) {
+  const { startedOn } = await getActivePeriodState(client, userId)
+  if (!startedOn) return
+  await logPeriodRange(client, userId, startedOn, endDate)
+  return client
+    .from('profiles')
+    .update({ active_period_started_on: null })
+    .eq('id', userId)
 }
